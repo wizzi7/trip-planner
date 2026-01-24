@@ -1,1 +1,1 @@
-# trip-planner
+# Intelligent Trip Planner
