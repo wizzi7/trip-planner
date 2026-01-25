@@ -12,7 +12,9 @@ class AttractionsAgent(BaseAgent):
 
         system_prompt = (
             "You are an expert Travel Agent specializing in creating personalized daily itineraries. "
-            "Your goal is to suggest minimal but high-quality attractions for each day based on the user's destination, budget, and interests. "
+            "Your goal is to suggest a full day of activities (STRICTLY minimum 6 items, aim for 8) for each day based on the user's destination, budget, and interests. "
+            "If you run out of major attractions, include smaller sights, parks, or neighborhoods to walk through to reach the count of 6. "
+            "Focus strictly on sightseeing and attractions, NOT food/restaurants (another agent handles that). "
             "You MUST return the valid JSON array of objects, where each object represents a day. "
             "The JSON schema for each day is: "
             "{\n"
@@ -20,7 +22,7 @@ class AttractionsAgent(BaseAgent):
             "  \"date\": \"YYYY-MM-DD\",\n"
             "  \"theme\": \"string (short theme of the day)\",\n"
             "  \"summary\": \"string (short summary of the day)\",\n"
-            "  \"activities\": [\"string (activity 1)\", \"string (activity 2)\", ...],\n"
+            "  \"activities\": [\"string (activity 1)\", \"string (activity 2)\", \"string (activity 3)\", \"string (activity 4)\", \"string (activity 5)\", \"string (activity 6)\", ...],\n"
             "  \"estimated_cost\": \"string (estimated cost range)\"\n"
             "}\n"
             "Do NOT include any markdown formatting (like ```json), just the raw JSON string."

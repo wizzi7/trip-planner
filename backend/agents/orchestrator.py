@@ -4,12 +4,14 @@ from backend.agents.preferences import PreferencesAgent
 from backend.agents.attractions import AttractionsAgent
 from backend.agents.transport import TransportationAgent
 from backend.agents.budget import BudgetAgent
+from backend.agents.gastronomy import GastronomyAgent
 
 class OrchestratorAgent(BaseAgent):
     def __init__(self):
         super().__init__(name="Orchestrator")
         self.preferences_agent = PreferencesAgent()
         self.attractions_agent = AttractionsAgent()
+        self.gastronomy_agent = GastronomyAgent()
         self.transport_agent = TransportationAgent()
         self.budget_agent = BudgetAgent()
 
@@ -22,7 +24,10 @@ class OrchestratorAgent(BaseAgent):
         # 2. Attractions Agent
         days = await self.attractions_agent.run(user_input, constraints)
         
-        # 3. Transportation Agent
+        # 3. Gastronomy Agent
+        days = await self.gastronomy_agent.run(user_input, days)
+
+        # 4. Transportation Agent
         days = await self.transport_agent.run(user_input, days)
 
         plan = TripPlan(
@@ -32,7 +37,7 @@ class OrchestratorAgent(BaseAgent):
             metadata={"constraints": constraints}
         )
         
-        # 4. Budget Agent
+        # 5. Budget Agent
         plan = await self.budget_agent.run(user_input, plan)
         
         print(f"[{self.name}] Plan generated successfully.")

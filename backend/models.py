@@ -25,6 +25,7 @@ class TripDay(BaseModel):
     summary: str
     activities: List[str]
     estimated_cost: str
+    meals: Dict[str, str] = {}
 
 class TripPlan(BaseModel):
     destination: str

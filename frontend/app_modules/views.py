@@ -89,12 +89,33 @@ def render_results(plan):
                 <div class="trip-day-card">
                     <h4>📅 {day['date']}</h4>
                     <p><i>{day.get('summary', '')}</i></p>
-                    <ul>
             """, unsafe_allow_html=True)
+
+            st.markdown("""
+                    <h5 style="padding-bottom: 5px;">🏛️ Attractions</h5>
+                    <ul style="margin-bottom: 0;">
+            """, unsafe_allow_html=True)
+
             for act in day.get('activities', []):
                 st.markdown(f"<li>{act}</li>", unsafe_allow_html=True)
+            
             st.markdown("""
                     </ul>
+                    
+                    <h5 style="margin-top: 20px;">🍽️ Gastronomy</h5>
+            """, unsafe_allow_html=True)
+            
+            meals = day.get('meals', {})
+            if meals:
+                 st.markdown(f"<b>🍳 Breakfast:</b> {meals.get('breakfast', 'N/A')}<br>", unsafe_allow_html=True)
+                 st.markdown(f"<b>🥗 Lunch:</b> {meals.get('lunch', 'N/A')}<br>", unsafe_allow_html=True)
+                 st.markdown(f"<b>🍰 Snack:</b> {meals.get('snack', 'N/A')}<br>", unsafe_allow_html=True)
+                 st.markdown(f"<b>🍷 Dinner:</b> {meals.get('dinner', 'N/A')}", unsafe_allow_html=True)
+            else:
+                 st.markdown("<i>No specific meal recommendations for today.</i>", unsafe_allow_html=True)
+
+            st.markdown("""
+                    </div>
                 </div>
             """, unsafe_allow_html=True)
 
