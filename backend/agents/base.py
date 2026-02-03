@@ -3,6 +3,7 @@ import os
 import requests
 import json
 from dotenv import load_dotenv
+import logging
 
 load_dotenv()
 
@@ -11,16 +12,17 @@ class BaseAgent:
         self.name = name
         self.state = state or {}
         self.api_key = os.environ.get("OPENROUTER_API_KEY")
+        self.logger = logging.getLogger(name)
 
-    async def run(self, *args, **kwargs) -> Any:
+    async def run(self, world: "WorldState") -> Any:
         raise NotImplementedError
 
     def call_openrouter(self, system_prompt: str, user_prompt: str, json_response: bool = True) -> Any:
         if not self.api_key:
-            print(f"[{self.name}] ERROR: No API Key found.")
+            self.logger.error("No API Key found.")
             return None
 
-        print(f"[{self.name}] Calling OpenRouter...")
+        self.logger.info("Calling OpenRouter...")
         
         try:
             response = requests.post(
@@ -48,13 +50,13 @@ class BaseAgent:
                     try:
                         return json.loads(content)
                     except json.JSONDecodeError:
-                        print(f"[{self.name}] Failed to parse JSON: {content}")
+                        self.logger.error(f"Failed to parse JSON: {content}")
                         return None
                 return content
             else:
-                print(f"[{self.name}] API Error: {response.status_code} - {response.text}")
+                self.logger.error(f"API Error: {response.status_code} - {response.text}")
                 return None
                 
         except Exception as e:
-            print(f"[{self.name}] Execution Error: {e}")
+            self.logger.error(f"Execution Error: {e}")
             return None

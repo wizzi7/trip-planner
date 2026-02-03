@@ -1,4 +1,6 @@
 from backend.models import UserInput, TripPlan
+from backend.world_state import WorldState
+import asyncio
 from backend.agents.base import BaseAgent
 from backend.agents.preferences import PreferencesAgent
 from backend.agents.attractions import AttractionsAgent
@@ -16,29 +18,40 @@ class OrchestratorAgent(BaseAgent):
         self.budget_agent = BudgetAgent()
 
     async def run(self, user_input: UserInput) -> TripPlan:
-        print(f"[{self.name}] Starting planning for {user_input.destination}")
+        self.logger.info(f"Starting MAS planning for {user_input.destination}")
         
-        # 1. Preferences Agent
-        constraints = await self.preferences_agent.run(user_input)
-        
-        # 2. Attractions Agent
-        days = await self.attractions_agent.run(user_input, constraints)
-        
-        # 3. Gastronomy Agent
-        days = await self.gastronomy_agent.run(user_input, days)
+        world = WorldState(user_input)
 
-        # 4. Transportation Agent
-        days = await self.transport_agent.run(user_input, days)
+        agents = [
+            self.preferences_agent,
+            self.attractions_agent,
+            self.gastronomy_agent,
+            self.transport_agent,
+            self.budget_agent
+        ]
+        
+        tasks = [asyncio.create_task(agent.run(world)) for agent in agents]
+        
+        self.logger.info("Agents started. Waiting for plan stability...")
+        await world.plan_stable.wait()
+        
+        self.logger.info("Plan stable. Stopping agents.")
 
+        for t in tasks:
+            if not t.done():
+                t.cancel()
+
+        await asyncio.gather(*tasks, return_exceptions=True)
+        
+        self.logger.info("Generating final TripPlan.")
+        
+        final_snapshot = await world.get_snapshot()
         plan = TripPlan(
             destination=user_input.destination,
-            total_cost=0,
-            days=days,
-            metadata={"constraints": constraints}
+            total_cost=final_snapshot["total_cost"],
+            days=final_snapshot["days"],
+            metadata={"constraints": final_snapshot["constraints"]}
         )
+        plan.days = final_snapshot["days"] 
         
-        # 5. Budget Agent
-        plan = await self.budget_agent.run(user_input, plan)
-        
-        print(f"[{self.name}] Plan generated successfully.")
         return plan

@@ -1,13 +1,18 @@
-from typing import List
-from backend.models import UserInput, TripDay
 from backend.agents.base import BaseAgent
 
 class TransportationAgent(BaseAgent):
     def __init__(self):
         super().__init__(name="TransportationAgent")
 
-    async def run(self, user_input: UserInput, plan_days: List[TripDay]) -> List[TripDay]:
-        print(f"[{self.name}] Optimizing transport...")
+    async def run(self, world: "WorldState"):
+        self.logger.info("Waiting for itinerary...")
+        await world.days_planned.wait()
+
+        async with world.lock:
+             plan_days = [d.model_copy() for d in world.days]
+             user_input = world.user_input
+
+        self.logger.info("Optimizing transport...")
 
         plan_summary = []
         for day in plan_days:
@@ -31,10 +36,11 @@ class TransportationAgent(BaseAgent):
 
         response_data = self.call_openrouter(system_prompt, user_prompt, json_response=True)
         
-        if response_data:
-            transport_map = response_data.get("daily_transport", {})
-            for day in plan_days:
-                rec = transport_map.get(str(day.day), "Standard Transport")
-                day.summary += f" [Transport: {rec}]"
-        
-        return plan_days
+        async with world.lock:
+            if response_data:
+                transport_map = response_data.get("daily_transport", {})
+                for day in world.days:
+                    rec = transport_map.get(str(day.day), "Standard Transport")
+                    day.summary += f" [Transport: {rec}]"
+            
+            world.cost_updated.set()

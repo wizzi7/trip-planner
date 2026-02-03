@@ -1,5 +1,5 @@
-from typing import Dict, Any, List
-from backend.models import UserInput, TripDay
+from typing import List
+from backend.models import TripDay
 from backend.agents.base import BaseAgent
 from datetime import datetime, timedelta
 
@@ -7,8 +7,14 @@ class AttractionsAgent(BaseAgent):
     def __init__(self):
         super().__init__(name="AttractionsAgent")
 
-    async def run(self, user_input: UserInput, constraints: Dict[str, Any]) -> List[TripDay]:
-        print(f"[{self.name}] Generating itinerary for {user_input.destination} with constraints {constraints}")
+    async def run(self, world: "WorldState"):
+        self.logger.info("Waiting for constraints...")
+        await world.constraints_ready.wait()
+        
+        user_input = world.user_input
+        constraints = world.constraints
+        
+        self.logger.info(f"Generating itinerary for {user_input.destination} with constraints {constraints}")
 
         system_prompt = (
             "You are an expert Travel Agent specializing in creating personalized daily itineraries. "
@@ -33,7 +39,7 @@ class AttractionsAgent(BaseAgent):
             end_date = datetime.strptime(user_input.departure.split(' ')[0], "%Y-%m-%d")
             num_days = (end_date - start_date).days + 1
         except Exception as e:
-            print(f"[{self.name}] Date parsing error: {e}. Defaulting to 3 days.")
+            self.logger.error(f"Date parsing error: {e}. Defaulting to 3 days.")
             num_days = 3
             start_date = datetime.now()
 
@@ -49,17 +55,19 @@ class AttractionsAgent(BaseAgent):
 
         parsed_days = self.call_openrouter(system_prompt, user_prompt, json_response=True)
         
+        trip_days = []
         if parsed_days:
             try:
-                trip_days = []
                 for d in parsed_days:
                     trip_days.append(TripDay(**d))
-                return trip_days
             except Exception as e:
-                 print(f"[{self.name}] Parsing Error: {e}")
-
-        return self._fallback_response()
+                 self.logger.error(f"Parsing Error: {e}")
+                 trip_days = self._fallback_response()
+        else:
+            trip_days = self._fallback_response()
+            
+        await world.set_days(trip_days)
 
     def _fallback_response(self) -> List[TripDay]:
-        print(f"[{self.name}] Using fallback response.")
+        self.logger.warning("Using fallback response.")
         return []

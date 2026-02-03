@@ -1,13 +1,18 @@
-from typing import List
-from backend.models import UserInput, TripDay
 from backend.agents.base import BaseAgent
 
 class GastronomyAgent(BaseAgent):
     def __init__(self):
         super().__init__(name="GastronomyAgent")
 
-    async def run(self, user_input: UserInput, plan_days: List[TripDay]) -> List[TripDay]:
-        print(f"[{self.name}] Finding culinary experiences...")
+    async def run(self, world: "WorldState"):
+        self.logger.info("Waiting for itinerary...")
+        await world.days_planned.wait()
+        
+        async with world.lock:
+            plan_days = [d.model_copy() for d in world.days]
+            user_input = world.user_input
+
+        self.logger.info("Finding culinary experiences...")
 
         plan_context = []
         for day in plan_days:
@@ -35,23 +40,24 @@ class GastronomyAgent(BaseAgent):
 
         response_data = self.call_openrouter(system_prompt, user_prompt, json_response=True)
 
-        if response_data:
-            for day in plan_days:
-                day_meals = response_data.get(str(day.day), {})
-                day.meals = {
-                    "breakfast": day_meals.get("breakfast", "Local Breakfast Spot"),
-                    "lunch": day_meals.get("lunch", "Local Lunch Spot"),
-                    "dinner": day_meals.get("dinner", "Local Dinner Spot"),
-                    "snack": day_meals.get("snack", "Local Snack/Cafe")
-                }
-        else:
-             print(f"[{self.name}] Failed to generate meals, using defaults.")
-             for day in plan_days:
-                day.meals = {
-                    "breakfast": "Hotel Breakfast or Local Cafe",
-                    "lunch": "City Center Restaurant",
-                    "dinner": "Traditional Local Restaurant",
-                    "snack": "Street Food or Cafe"
-                }
-
-        return plan_days
+        async with world.lock:
+            if response_data:
+                for day in world.days:
+                    day_meals = response_data.get(str(day.day), {})
+                    day.meals = {
+                        "breakfast": day_meals.get("breakfast", "Local Breakfast Spot"),
+                        "lunch": day_meals.get("lunch", "Local Lunch Spot"),
+                        "dinner": day_meals.get("dinner", "Local Dinner Spot"),
+                        "snack": day_meals.get("snack", "Local Snack/Cafe")
+                    }
+            else:
+                 self.logger.warning("Failed to generate meals, using defaults.")
+                 for day in world.days:
+                    day.meals = {
+                        "breakfast": "Hotel Breakfast or Local Cafe",
+                        "lunch": "City Center Restaurant",
+                        "dinner": "Traditional Local Restaurant",
+                        "snack": "Street Food or Cafe"
+                    }
+            
+            world.cost_updated.set()
