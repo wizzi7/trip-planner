@@ -2,6 +2,9 @@ from fastapi import FastAPI, HTTPException
 from backend.models import UserInput, TripPlan, UpdateRequest
 from backend.agents.orchestrator import OrchestratorAgent
 from backend.agents.feedback import FeedbackAgent
+from backend.logging_config import setup_logging
+
+setup_logging()
 
 app = FastAPI(title="Intelligent Trip Planner API")
 orchestrator = OrchestratorAgent()
