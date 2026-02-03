@@ -26,7 +26,7 @@ def render_form():
             dep_date = st.date_input("Departure Date", datetime.date.today() + datetime.timedelta(days=4))
             dep_time = st.time_input("Departure Time", datetime.time(18, 0))
 
-        st.markdown("### 👥 Travellers & Budget")
+        st.markdown("### 🧑‍🤝‍🧑Travellers & Budget")
         col3, col4 = st.columns(2)
         with col3:
             guests = st.number_input("Guests", min_value=1, value=2)
