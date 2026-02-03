@@ -4,9 +4,9 @@ class TransportationAgent(BaseAgent):
     def __init__(self):
         super().__init__(name="TransportationAgent")
 
-    async def run(self, world: "WorldState"):
+    async def run(self, world: "WorldState", bus: "EventBus"):
         self.logger.info("Waiting for itinerary...")
-        await world.days_planned.wait()
+        await bus.subscribe("days_planned")
 
         async with world.lock:
              plan_days = [d.model_copy() for d in world.days]
@@ -43,4 +43,4 @@ class TransportationAgent(BaseAgent):
                     rec = transport_map.get(str(day.day), "Standard Transport")
                     day.summary += f" [Transport: {rec}]"
             
-            world.cost_updated.set()
+            await bus.emit("cost_updated")

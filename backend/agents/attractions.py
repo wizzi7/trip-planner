@@ -7,12 +7,13 @@ class AttractionsAgent(BaseAgent):
     def __init__(self):
         super().__init__(name="AttractionsAgent")
 
-    async def run(self, world: "WorldState"):
+    async def run(self, world: "WorldState", bus: "EventBus"):
         self.logger.info("Waiting for constraints...")
-        await world.constraints_ready.wait()
+        await bus.subscribe("constraints_ready")
         
-        user_input = world.user_input
-        constraints = world.constraints
+        async with world.lock:
+            user_input = world.user_input
+            constraints = world.constraints
         
         self.logger.info(f"Generating itinerary for {user_input.destination} with constraints {constraints}")
 
@@ -66,7 +67,10 @@ class AttractionsAgent(BaseAgent):
         else:
             trip_days = self._fallback_response()
             
-        await world.set_days(trip_days)
+        async with world.lock:
+            world.days = trip_days
+            
+        await bus.emit("days_planned")
 
     def _fallback_response(self) -> List[TripDay]:
         self.logger.warning("Using fallback response.")

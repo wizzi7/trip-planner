@@ -11,33 +11,6 @@ class WorldState:
 
         self.lock = asyncio.Lock()
 
-        self.constraints_ready = asyncio.Event()
-        self.days_planned = asyncio.Event()
-        self.cost_updated = asyncio.Event()
-        self.plan_stable = asyncio.Event()
-        
-    async def update_constraints(self, constraints: Dict[str, Any]):
-        async with self.lock:
-            self.constraints = constraints
-            self.constraints_ready.set()
-            
-    async def set_days(self, days: List[TripDay]):
-        async with self.lock:
-            self.days = days
-            self.days_planned.set()
-            
-    async def update_day_content(self, day_index: int, field: str, data: Any):
-        async with self.lock:
-            if 0 <= day_index < len(self.days):
-                setattr(self.days[day_index], field, data)
-                
-    async def add_cost(self, amount: float):
-        async with self.lock:
-            self.total_cost += amount
-            self.cost_updated.set()
-            self.cost_updated.clear()
-            self.cost_updated.set()
-
     async def get_snapshot(self) -> Dict[str, Any]:
         async with self.lock:
             return {

@@ -1,5 +1,6 @@
 from backend.models import UserInput, TripPlan
 from backend.world_state import WorldState
+from backend.event_bus import InMemoryEventBus
 import asyncio
 from backend.agents.base import BaseAgent
 from backend.agents.preferences import PreferencesAgent
@@ -21,7 +22,8 @@ class OrchestratorAgent(BaseAgent):
         self.logger.info(f"Starting MAS planning for {user_input.destination}")
         
         world = WorldState(user_input)
-
+        bus = InMemoryEventBus()
+        
         agents = [
             self.preferences_agent,
             self.attractions_agent,
@@ -30,10 +32,10 @@ class OrchestratorAgent(BaseAgent):
             self.budget_agent
         ]
         
-        tasks = [asyncio.create_task(agent.run(world)) for agent in agents]
+        tasks = [asyncio.create_task(agent.run(world, bus)) for agent in agents]
         
         self.logger.info("Agents started. Waiting for plan stability...")
-        await world.plan_stable.wait()
+        await bus.subscribe("plan_stable")
         
         self.logger.info("Plan stable. Stopping agents.")
 

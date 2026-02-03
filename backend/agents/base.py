@@ -14,7 +14,7 @@ class BaseAgent:
         self.api_key = os.environ.get("OPENROUTER_API_KEY")
         self.logger = logging.getLogger(name)
 
-    async def run(self, world: "WorldState") -> Any:
+    async def run(self, world: "WorldState", bus: "EventBus") -> Any:
         raise NotImplementedError
 
     def call_openrouter(self, system_prompt: str, user_prompt: str, json_response: bool = True) -> Any:

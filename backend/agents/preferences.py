@@ -4,7 +4,7 @@ class PreferencesAgent(BaseAgent):
     def __init__(self):
         super().__init__(name="PreferencesAgent")
 
-    async def run(self, world: "WorldState"):
+    async def run(self, world: "WorldState", bus: "EventBus"):
         self.logger.info(f"Extracting constraints for {world.user_input.destination}")
         
         system_prompt = (
@@ -25,4 +25,8 @@ class PreferencesAgent(BaseAgent):
             constraints = {"interest_tags": [], "dietary_restrictions": []}
             
         self.logger.info(f"Extracted: {constraints}")
-        await world.update_constraints(constraints)
+        
+        async with world.lock:
+            world.constraints = constraints
+            
+        await bus.emit("constraints_ready")

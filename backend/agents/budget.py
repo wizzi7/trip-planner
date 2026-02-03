@@ -4,12 +4,12 @@ class BudgetAgent(BaseAgent):
     def __init__(self):
         super().__init__(name="BudgetAgent")
 
-    async def run(self, world: "WorldState"):
+    async def run(self, world: "WorldState", bus: "EventBus"):
         self.logger.info("Monitoring budget...")
         
         while True:
-            await world.cost_updated.wait()
-            world.cost_updated.clear()
+            await bus.subscribe("cost_updated")
+            await bus.clear("cost_updated")
             
             self.logger.info("Validating budget...")
             
@@ -73,11 +73,11 @@ class BudgetAgent(BaseAgent):
                         world.constraints["alerts"] = alerts
 
                         self.logger.info(f"Cost updated: {world.total_cost}. Alerts: {alerts}")
-                        world.plan_stable.set()
+                        await bus.emit("plan_stable")
                         return
 
                     except Exception as e:
                         self.logger.error(f"Error parsing response: {e}")
 
-            world.plan_stable.set()
+            await bus.emit("plan_stable")
             return
