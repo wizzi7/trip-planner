@@ -8,7 +8,7 @@ class WorldState:
         self.constraints: Dict[str, Any] = {}
         self.days: List[TripDay] = []
         self.total_cost: float = 0.0
-        self.token_usage: Dict[str, int] = {}
+        self.token_usage: Dict[str, Any] = {}
         
         self.lock = asyncio.Lock()
 

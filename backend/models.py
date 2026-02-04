@@ -28,11 +28,18 @@ class TripDay(BaseModel):
     estimated_cost: str
     meals: Dict[str, str] = {}
 
+class UsageStats(BaseModel):
+    input_tokens: int
+    output_tokens: int
+    total_tokens: int
+    cost: float
+    model: str
+
 class TripPlan(BaseModel):
     destination: str
     total_cost: float
     days: List[TripDay]
-    usage_stats: Dict[str, int] = Field(default_factory=dict)
+    usage_stats: Dict[str, UsageStats] = Field(default_factory=dict)
     metadata: Dict[str, Any] = Field(default_factory=dict, description="Metadata from agents (e.g. constraints)")
 
 class UpdateRequest(BaseModel):

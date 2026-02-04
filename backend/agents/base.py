@@ -4,6 +4,7 @@ import requests
 import json
 from dotenv import load_dotenv
 import logging
+from backend.pricing import MODEL_PRICING
 
 load_dotenv()
 
@@ -44,19 +45,35 @@ class BaseAgent:
             if response.status_code == 200:
                 data = response.json()
                 content = data['choices'][0]['message']['content']
-                usage = data.get('usage', {}).get('total_tokens', 0)
+                usage_raw = data.get('usage', {})
+                input_tokens = usage_raw.get('prompt_tokens', 0)
+                output_tokens = usage_raw.get('completion_tokens', 0)
+                total_tokens = usage_raw.get('total_tokens', 0)
+                
+                model_used = data.get('model', 'openai/gpt-3.5-turbo')
+                pricing = MODEL_PRICING.get(model_used, MODEL_PRICING["openai/gpt-3.5-turbo"])
+                
+                cost = (input_tokens / 1_000_000 * pricing["input"]) + (output_tokens / 1_000_000 * pricing["output"])
+                
+                usage_stats = {
+                    "input_tokens": input_tokens,
+                    "output_tokens": output_tokens,
+                    "total_tokens": total_tokens,
+                    "cost": cost,
+                    "model": model_used
+                }
                 
                 if json_response:
                     content = content.replace("```json", "").replace("```", "").strip()
                     try:
-                        return json.loads(content), usage
+                        return json.loads(content), usage_stats
                     except json.JSONDecodeError:
                         self.logger.error(f"Failed to parse JSON: {content}")
-                        return None, usage
-                return content, usage
+                        return None, usage_stats
+                return content, usage_stats
             else:
                 self.logger.error(f"API Error: {response.status_code} - {response.text}")
-                return None, 0
+                return None, {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0, "cost": 0.0, "model": "unknown"}
                 
         except Exception as e:
             self.logger.error(f"Execution Error: {e}")

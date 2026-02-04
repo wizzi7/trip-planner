@@ -18,20 +18,45 @@ def render_token_usage(plan):
     usage_stats = plan.get('usage_stats', {})
     if not usage_stats:
         return
-        
+
     st.markdown("---")
     st.markdown("### 📊 Token Usage Stats (Debug)")
     
-    total_tokens = sum(usage_stats.values())
+    total_input = 0
+    total_output = 0
+    total_cost = 0.0
     
-    col1, col2 = st.columns([3, 1])
+    data = []
+    for agent, stats in usage_stats.items():
+        if isinstance(stats, dict):
+            inp = stats.get('input_tokens', 0)
+            out = stats.get('output_tokens', 0)
+            cost = stats.get('cost', 0.0)
+            model = stats.get('model', 'N/A')
+        else:
+             inp = getattr(stats, 'input_tokens', 0)
+             out = getattr(stats, 'output_tokens', 0)
+             cost = getattr(stats, 'cost', 0.0)
+             model = getattr(stats, 'model', 'N/A')
+             
+        total_input += inp
+        total_output += out
+        total_cost += cost
+        
+        data.append({
+            "Agent": agent,
+            "Model": model,
+            "Input Tokens": inp,
+            "Output Tokens": out,
+            "Cost ($)": f"${cost:.4f}"
+        })
+        
+    st.table(data)
     
-    with col1:
-        for agent, tokens in usage_stats.items():
-            st.text(f"{agent}: {tokens} tokens")
-            
-    with col2:
-        st.metric("Total Tokens", total_tokens)
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Total Input", total_input)
+    col2.metric("Total Output", total_output)
+    col3.metric("Total Cost", f"${total_cost:.4f}")
 
 
 def render_form():
