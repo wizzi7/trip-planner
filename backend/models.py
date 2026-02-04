@@ -15,6 +15,7 @@ class UserInput(BaseModel):
     pace: str
     transport: List[str]
     accommodation: Optional[str] = None
+    interests: List[str] = Field(default_factory=list)
     extra_req: Optional[str] = None
     llm_settings: Optional[LLMSettings] = None
 

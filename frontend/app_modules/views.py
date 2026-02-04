@@ -35,6 +35,28 @@ def render_form():
 
         st.markdown("### 🎨 Preferences")
         
+        interests = st.multiselect(
+            "Preferred Attraction Types",
+            [
+                "Monuments", 
+                "Museums / Art", 
+                "Outdoor Activities", 
+                "Amusement Parks", 
+                "Nature / Landscapes", 
+                "Gastronomy", 
+                "Nightlife", 
+                "Shopping", 
+                "Relaxation / Spa"
+            ],
+            default=[]
+        )
+        
+        other_interest = st.checkbox("Other")
+        if other_interest:
+            other_text = st.text_input("Enter other interests", placeholder="e.g. Street Art, Architecture")
+            if other_text:
+                interests.append(other_text)
+
         pace = st.select_slider("Pace", options=["Relaxed", "Moderate", "Fast (Intense)"], value="Moderate")
         
         transport = st.multiselect(
@@ -57,6 +79,7 @@ def render_form():
         "departure": f"{dep_date} {dep_time}",
         "guests": guests,
         "budget": budget,
+        "interests": interests,
         "pace": pace,
         "transport": transport,
         "accommodation": accommodation,

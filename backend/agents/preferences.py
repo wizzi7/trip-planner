@@ -15,6 +15,7 @@ class PreferencesAgent(BaseAgent):
         user_prompt = (
             f"Destination: {world.user_input.destination}\n"
             f"Extra Req: {world.user_input.extra_req}\n"
+            f"Interests: {world.user_input.interests}\n"
             f"Pace: {world.user_input.pace}\n"
             f"Guests: {world.user_input.guests}\n"
         )
