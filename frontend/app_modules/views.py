@@ -53,10 +53,11 @@ def render_token_usage(plan):
         
     st.table(data)
     
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
     col1.metric("Total Input", total_input)
     col2.metric("Total Output", total_output)
-    col3.metric("Total Cost", f"${total_cost:.4f}")
+    col3.metric("Total Tokens", total_input + total_output)
+    col4.metric("Total Cost", f"${total_cost:.4f}")
 
 
 def render_form():
