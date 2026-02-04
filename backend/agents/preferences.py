@@ -20,7 +20,10 @@ class PreferencesAgent(BaseAgent):
             f"Guests: {world.user_input.guests}\n"
         )
 
-        constraints = self.call_openrouter(system_prompt, user_prompt, json_response=True)
+        constraints, usage = self.call_openrouter(system_prompt, user_prompt, json_response=True)
+        
+        async with world.lock:
+             world.token_usage[self.name] = usage
         
         if not constraints:
             constraints = {"interest_tags": [], "dietary_restrictions": []}

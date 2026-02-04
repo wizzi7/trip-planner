@@ -8,6 +8,31 @@ def render_header():
             <p style='color: #6b7280; font-size: 1.1rem;'>Your personal AI-created journey</p>
         </div>
     """, unsafe_allow_html=True)
+    
+SHOW_TOKEN_USAGE = True
+
+def render_token_usage(plan):
+    if not SHOW_TOKEN_USAGE:
+        return
+        
+    usage_stats = plan.get('usage_stats', {})
+    if not usage_stats:
+        return
+        
+    st.markdown("---")
+    st.markdown("### 📊 Token Usage Stats (Debug)")
+    
+    total_tokens = sum(usage_stats.values())
+    
+    col1, col2 = st.columns([3, 1])
+    
+    with col1:
+        for agent, tokens in usage_stats.items():
+            st.text(f"{agent}: {tokens} tokens")
+            
+    with col2:
+        st.metric("Total Tokens", total_tokens)
+
 
 def render_form():
     with st.container():
@@ -164,5 +189,9 @@ def render_results(plan):
                     st.warning("Please enter your feedback before regenerating.")
     
     st.markdown('</div>', unsafe_allow_html=True)
+    
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    render_token_usage(plan)
     
     return regenerate_data

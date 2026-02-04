@@ -38,7 +38,10 @@ class GastronomyAgent(BaseAgent):
             "Please provide gastronomy recommendations for each day."
         )
 
-        response_data = self.call_openrouter(system_prompt, user_prompt, json_response=True)
+        response_data, usage = self.call_openrouter(system_prompt, user_prompt, json_response=True)
+        
+        async with world.lock:
+             world.token_usage[self.name] = usage
 
         async with world.lock:
             if response_data:

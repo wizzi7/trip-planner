@@ -32,6 +32,7 @@ class TripPlan(BaseModel):
     destination: str
     total_cost: float
     days: List[TripDay]
+    usage_stats: Dict[str, int] = Field(default_factory=dict)
     metadata: Dict[str, Any] = Field(default_factory=dict, description="Metadata from agents (e.g. constraints)")
 
 class UpdateRequest(BaseModel):

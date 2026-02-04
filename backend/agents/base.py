@@ -44,18 +44,19 @@ class BaseAgent:
             if response.status_code == 200:
                 data = response.json()
                 content = data['choices'][0]['message']['content']
+                usage = data.get('usage', {}).get('total_tokens', 0)
                 
                 if json_response:
                     content = content.replace("```json", "").replace("```", "").strip()
                     try:
-                        return json.loads(content)
+                        return json.loads(content), usage
                     except json.JSONDecodeError:
                         self.logger.error(f"Failed to parse JSON: {content}")
-                        return None
-                return content
+                        return None, usage
+                return content, usage
             else:
                 self.logger.error(f"API Error: {response.status_code} - {response.text}")
-                return None
+                return None, 0
                 
         except Exception as e:
             self.logger.error(f"Execution Error: {e}")

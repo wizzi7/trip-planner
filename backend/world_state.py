@@ -8,7 +8,8 @@ class WorldState:
         self.constraints: Dict[str, Any] = {}
         self.days: List[TripDay] = []
         self.total_cost: float = 0.0
-
+        self.token_usage: Dict[str, int] = {}
+        
         self.lock = asyncio.Lock()
 
     async def get_snapshot(self) -> Dict[str, Any]:
@@ -16,5 +17,6 @@ class WorldState:
             return {
                 "constraints": self.constraints.copy(),
                 "days": [d.model_copy() for d in self.days],
-                "total_cost": self.total_cost
+                "total_cost": self.total_cost,
+                "token_usage": self.token_usage.copy()
             }
