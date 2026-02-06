@@ -1,4 +1,5 @@
 from backend.agents.base import BaseAgent
+from backend.models import MobilitySection
 
 class TransportationAgent(BaseAgent):
     def __init__(self):
@@ -9,41 +10,54 @@ class TransportationAgent(BaseAgent):
         await bus.subscribe("days_planned")
 
         async with world.lock:
-             plan_days = [d.model_copy() for d in world.days]
              user_input = world.user_input
 
-        self.logger.info("Optimizing transport...")
-
-        plan_summary = []
-        for day in plan_days:
-            plan_summary.append({
-                "day": day.day,
-                "activities": day.activities
-            })
+        self.logger.info("Generating City Mobility Guide...")
 
         system_prompt = (
-            "You are an expert Transport Planner. "
-            "Analyze the itinerary activities and suggest the best mode of transport for each day. "
-            "Consider the user's preferred transport mode. "
-            "Return a JSON object: { \"daily_transport\": { \"1\": \"string recommendation in English\", \"2\": \"...\" } }"
+            "You are an expert City Mobility Guide. "
+            "Your goal is to provide a comprehensive, practical transportation guide for the trip destination. "
+            "This guide is NOT tied to specific days. "
+            "It must cover: Public Transport, Ride-Hailing, Walking, Bikes/Scooters, and optionally Ferries and Car Rental. "
+            "Include specific details like ticket prices, app names, and qualitative cost levels (Cheap, Moderate, Expensive). "
+            "For 'public_transport', include a valid 'website_url' to the official transport authority or ticket info page. "
+            "For 'ticket_types', list common options (e.g., 'Single ticket', '24h pass'). "
+            "For 'approximate_prices', give concrete examples in LOCAL CURRENCY. "
+            "For 'ride_hailing', ALWAYS include Bolt, Uber, Free Now, and Local Taxis if available. "
+            "Structure the response as a JSON object matching the following structure: "
+            "{ "
+            "  \"public_transport\": { \"available_options\": [\"Metro\", \"Bus\"], \"ticket_types\": \"...\", \"approximate_prices\": \"...\", \"coverage_quality\": \"...\", \"useful_apps\": [\"...\"], \"best_use_cases\": \"...\", \"price_level\": \"💸 Cheap\", \"website_url\": \"https://...\" }, "
+            "  \"taxis\": { \"available_apps\": [\"Uber\", \"Bolt\"], \"typical_pricing_level\": \"💸💸 Moderate\", \"safety_notes\": \"...\", \"when_to_use\": \"...\" }, "
+            "  \"walking\": { \"is_walkable\": true, \"best_areas\": \"...\" }, "
+            "  \"bikes\": { \"available\": true, \"providers\": [\"Lime\", \"Tier\"], \"price_range\": \"...\", \"convenience\": \"...\", \"cautions\": \"...\" }, "
+            "  \"ferries\": { \"is_relevant\": false, \"routes\": \"...\", \"cost_level\": \"...\", \"tourist_vs_commuter\": \"...\" }, "
+            "  \"car_rental\": { \"recommended\": false, \"parking_difficulty\": \"...\", \"notes\": \"...\" }, "
+            "  \"quick_recommendations\": { \"best_overall\": \"...\", \"cheapest\": \"...\", \"most_convenient\": \"...\", \"avoid\": \"...\" } "
+            "}"
         )
         
         user_prompt = (
             f"Destination: {user_input.destination}\n"
-            f"Preferred Transport: {user_input.transport}\n"
-            f"Itinerary: {plan_summary}\n"
+            f"Budget Per Person: {user_input.budget}\n"
+            "Please provide the City Mobility Guide."
         )
 
-        response_data, usage = self.call_openrouter(system_prompt, user_prompt, json_response=True)
+        response_data, usage = self.call_openrouter(system_prompt, user_prompt, json_response=True, max_tokens=2000)
         
         async with world.lock:
              world.token_usage[self.name] = usage
         
-        async with world.lock:
-            if response_data:
-                transport_map = response_data.get("daily_transport", {})
-                for day in world.days:
-                    rec = transport_map.get(str(day.day), "Standard Transport")
-                    day.summary += f" [Transport: {rec}]"
+        if response_data:
+            self.logger.info(f"Raw Mobility Response: {response_data}")
+            try:
+                mobility_section = MobilitySection(**response_data)
+                async with world.lock:
+                    world.mobility_section = mobility_section
+                self.logger.info("Mobility section generated successfully.")
+            except Exception as e:
+                self.logger.error(f"Failed to parse mobility section: {e}")
+                self.logger.error(f"Problematic data: {response_data}")
+        else:
+             self.logger.warning("Failed to generate mobility section.")
             
-            await bus.emit("cost_updated")
+        await bus.emit("cost_updated")

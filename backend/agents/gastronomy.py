@@ -13,6 +13,13 @@ class GastronomyAgent(BaseAgent):
         self.logger.info("Waiting for itinerary...")
         await bus.subscribe("days_planned")
         
+        if os.environ.get("ENABLE_GASTRONOMY", "true").lower() == "false":
+            self.logger.info("Gastronomy Agent disabled by ENABLE_GASTRONOMY flag.")
+            async with world.lock:
+                world.culinary_section = CulinarySection()
+            await bus.emit("cost_updated")
+            return
+
         async with world.lock:
             user_input = world.user_input
 

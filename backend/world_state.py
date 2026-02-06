@@ -1,6 +1,6 @@
 import asyncio
 from typing import Dict, Any, List, Optional
-from backend.models import UserInput, TripDay, CulinarySection
+from backend.models import UserInput, TripDay, CulinarySection, MobilitySection
 
 class WorldState:
     def __init__(self, user_input: UserInput):
@@ -9,6 +9,7 @@ class WorldState:
         self.days: List[TripDay] = []
         self.total_cost: float = 0.0
         self.culinary_section: Optional[CulinarySection] = None
+        self.mobility_section: Optional[MobilitySection] = None
         self.token_usage: Dict[str, Any] = {}
         
         self.lock = asyncio.Lock()
@@ -20,5 +21,6 @@ class WorldState:
                 "days": [d.model_copy() for d in self.days],
                 "total_cost": self.total_cost,
                 "culinary_section": self.culinary_section.model_copy() if self.culinary_section else None,
+                "mobility_section": self.mobility_section.model_copy() if self.mobility_section else None,
                 "token_usage": self.token_usage.copy()
             }

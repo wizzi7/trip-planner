@@ -2,6 +2,7 @@ from typing import Any, Dict
 import os
 import requests
 import json
+import re
 from dotenv import load_dotenv
 import logging
 from backend.pricing import MODEL_PRICING
@@ -73,6 +74,8 @@ class BaseAgent:
                 
                 if json_response:
                     content = content.replace("```json", "").replace("```", "").strip()
+                    content = re.sub(r',\s*([\]}])', r'\1', content)
+                    
                     try:
                         return json.loads(content), usage_stats
                     except json.JSONDecodeError:

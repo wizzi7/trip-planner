@@ -54,7 +54,8 @@ class OrchestratorAgent(BaseAgent):
             days=final_snapshot["days"],
             usage_stats=final_snapshot["token_usage"],
             metadata={"constraints": final_snapshot["constraints"]},
-            culinary_section=final_snapshot.get("culinary_section", None)
+            culinary_section=final_snapshot.get("culinary_section", None),
+            mobility_section=final_snapshot.get("mobility_section", None)
         )
         plan.days = final_snapshot["days"] 
         

@@ -23,10 +23,10 @@ class BudgetAgent(BaseAgent):
                  self.logger.info("No days yet, waiting...")
                  continue
 
-            # Wait for Transport Agent
-            has_transport = all("Transport" in d.summary for d in plan_days)
-            if not has_transport:
-                 self.logger.info("Waiting for transport agent...")
+            # Wait for Transport Agent (Mobility Guide)
+            mobility_section = world.mobility_section
+            if mobility_section is None:
+                 self.logger.info("Waiting for mobility guide...")
                  continue
 
             # Wait for Gastronomy Agent
@@ -55,10 +55,19 @@ class BudgetAgent(BaseAgent):
                 "Example alert: 'Warning: Total cost exceeds budget by 20%'."
             )
             
+            mobility_info = "Transport Info: N/A"
+            if mobility_section:
+                mobility_info = (
+                    f"Public Transport: {mobility_section.public_transport.price_level if mobility_section.public_transport else 'N/A'}. "
+                    f"Typical Taxi: {mobility_section.taxis.typical_pricing_level if mobility_section.taxis else 'N/A'}. "
+                    f"Cheapest Option: {mobility_section.quick_recommendations.cheapest if mobility_section.quick_recommendations else 'N/A'}"
+                )
+
             user_prompt = (
                  f"Destination: {user_input.destination}\n"
                  f"Guests: {user_input.guests}\n"
                  f"User Budget: {user_input.budget} per person (Total: {user_input.budget * user_input.guests})\n"
+                 f"Mobility Costs Context: {mobility_info}\n"
                  f"Itinerary: {plan_summary}\n"
                  "Estimate costs now."
             )

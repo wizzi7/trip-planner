@@ -48,6 +48,66 @@ class CulinarySection(BaseModel):
     venues_cafes: List[CulinaryVenue] = Field(default_factory=list)
     venues_bars: List[CulinaryVenue] = Field(default_factory=list)
 
+class MobilityOption(BaseModel):
+    name: str
+    description: str
+    price_level: str
+    typical_price: Optional[str] = "N/A"
+    convenience: Optional[str] = "Moderate"
+
+class MobilitySystem(BaseModel):
+    available_options: List[str]
+    ticket_types: Any
+    approximate_prices: Any
+    coverage_quality: str
+    useful_apps: List[str]
+    best_use_cases: str
+    price_level: str
+    website_url: Optional[str] = None
+
+class RideHailing(BaseModel):
+    available_apps: List[str]
+    typical_pricing_level: str
+    safety_notes: str
+    when_to_use: str
+
+class WalkingGuide(BaseModel):
+    is_walkable: bool
+    best_areas: str
+
+class BikeScooter(BaseModel):
+    available: bool
+    providers: List[str]
+    price_range: str
+    convenience: str
+    cautions: str
+
+class FerryBoat(BaseModel):
+    is_relevant: bool
+    routes: str = ""
+    cost_level: str = ""
+    tourist_vs_commuter: str = ""
+
+class CarRental(BaseModel):
+    recommended: bool
+    parking_difficulty: str
+    notes: str
+
+class QuickRecommendations(BaseModel):
+    best_overall: str
+    cheapest: str
+    most_convenient: str
+    avoid: str
+
+class MobilitySection(BaseModel):
+    public_transport: Optional[MobilitySystem] = None
+    taxis: Optional[RideHailing] = None
+    walking: Optional[WalkingGuide] = None
+    bikes: Optional[BikeScooter] = None
+    ferries: Optional[FerryBoat] = None
+    car_rental: Optional[CarRental] = None
+    quick_recommendations: Optional[QuickRecommendations] = None
+
 class UsageStats(BaseModel):
     input_tokens: int
     output_tokens: int
@@ -61,6 +121,7 @@ class TripPlan(BaseModel):
     days: List[TripDay]
     usage_stats: Dict[str, UsageStats] = Field(default_factory=dict)
     culinary_section: Optional[CulinarySection] = None
+    mobility_section: Optional[MobilitySection] = None
     metadata: Dict[str, Any] = Field(default_factory=dict, description="Metadata from agents (e.g. constraints)")
 
 class UpdateRequest(BaseModel):
