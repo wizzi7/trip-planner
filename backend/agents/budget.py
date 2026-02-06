@@ -51,7 +51,8 @@ class BudgetAgent(BaseAgent):
                 "  \"total_estimated_cost\": number,\n"
                 "  \"alerts\": [\"string alert 1\", \"string alert 2\"]\n"
                 "}\n"
-                "Values should be in PLN or local currency appropriate for destination. Alerts must be in English. "
+                "CRITICAL: 'total_estimated_cost' MUST be a raw number (integer or float) WITHOUT any currency symbols or text (e.g., 540, not '540 PLN'). "
+                "Daily costs should be formatted strings with currency. Alerts must be in English. "
                 "Example alert: 'Warning: Total cost exceeds budget by 20%'."
             )
             
