@@ -16,12 +16,22 @@ class BudgetAgent(BaseAgent):
             async with world.lock:
                 plan_days = [d.model_copy() for d in world.days]
                 user_input = world.user_input
+                culinary_section = world.culinary_section
 
-            has_meals = all(d.meals for d in plan_days)
+            # Wait for plan days to be populated
+            if not plan_days:
+                 self.logger.info("No days yet, waiting...")
+                 continue
+
+            # Wait for Transport Agent
             has_transport = all("Transport" in d.summary for d in plan_days)
-            
-            if not (has_meals and has_transport):
-                 self.logger.info("Plan incomplete, waiting for agents...")
+            if not has_transport:
+                 self.logger.info("Waiting for transport agent...")
+                 continue
+
+            # Wait for Gastronomy Agent
+            if culinary_section is None:
+                 self.logger.info("Waiting for culinary agent...")
                  continue
 
             plan_summary = []

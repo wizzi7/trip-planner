@@ -20,44 +20,44 @@ def render_token_usage(plan):
         return
 
     st.markdown("---")
-    st.markdown("### 📊 Token Usage Stats (Debug)")
     
-    total_input = 0
-    total_output = 0
-    total_cost = 0.0
-    
-    data = []
-    for agent, stats in usage_stats.items():
-        if isinstance(stats, dict):
-            inp = stats.get('input_tokens', 0)
-            out = stats.get('output_tokens', 0)
-            cost = stats.get('cost', 0.0)
-            model = stats.get('model', 'N/A')
-        else:
-             inp = getattr(stats, 'input_tokens', 0)
-             out = getattr(stats, 'output_tokens', 0)
-             cost = getattr(stats, 'cost', 0.0)
-             model = getattr(stats, 'model', 'N/A')
-             
-        total_input += inp
-        total_output += out
-        total_cost += cost
+    with st.expander("📊 Token Usage Stats (Debug)", expanded=True):
+        total_input = 0
+        total_output = 0
+        total_cost = 0.0
         
-        data.append({
-            "Agent": agent,
-            "Model": model,
-            "Input Tokens": inp,
-            "Output Tokens": out,
-            "Cost ($)": f"${cost:.4f}"
-        })
+        data = []
+        for agent, stats in usage_stats.items():
+            if isinstance(stats, dict):
+                inp = stats.get('input_tokens', 0)
+                out = stats.get('output_tokens', 0)
+                cost = stats.get('cost', 0.0)
+                model = stats.get('model', 'N/A')
+            else:
+                 inp = getattr(stats, 'input_tokens', 0)
+                 out = getattr(stats, 'output_tokens', 0)
+                 cost = getattr(stats, 'cost', 0.0)
+                 model = getattr(stats, 'model', 'N/A')
+                 
+            total_input += inp
+            total_output += out
+            total_cost += cost
+            
+            data.append({
+                "Agent": agent,
+                "Model": model,
+                "Input Tokens": inp,
+                "Output Tokens": out,
+                "Cost ($)": f"${cost:.4f}"
+            })
+            
+        st.table(data)
         
-    st.table(data)
-    
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Total Input", total_input)
-    col2.metric("Total Output", total_output)
-    col3.metric("Total Tokens", total_input + total_output)
-    col4.metric("Total Cost", f"${total_cost:.4f}")
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric("Total Input", total_input)
+        col2.metric("Total Output", total_output)
+        col3.metric("Total Tokens", total_input + total_output)
+        col4.metric("Total Cost", f"${total_cost:.4f}")
 
 
 def render_form():
@@ -147,6 +147,100 @@ def render_loading():
         st.info("Creating your perfect plan. Please wait...")
         st.markdown('</div>', unsafe_allow_html=True)
 
+def render_culinary_section(plan):
+    culinary = plan.get('culinary_section')
+    if not culinary:
+        return
+
+    st.markdown("---")
+    
+    with st.expander("Culinary Inspirations", expanded=True):
+        st.markdown(f"## Culinary Inspirations")
+        st.markdown("### 🥘 Regional Cuisine – What to Try")
+        cols = st.columns(2)
+
+        main_dishes = culinary.get('main_dishes', [])
+        if main_dishes:
+            with cols[0]:
+                st.markdown("#### 🍲 Main Dishes")
+                for item in main_dishes:
+                    st.markdown(f"""
+                    **{item.get('name', 'Dish Name')}**  
+                    {item.get('description', '')}  
+                    💸 {item.get('price_range', '')}
+                    """)
+
+        with cols[1]:
+            soups = culinary.get('soups', [])
+            if soups:
+                st.markdown("#### 🥣 Soups")
+                for item in soups[:2]:
+                    st.markdown(f"""
+                    **{item.get('name', 'Soup Name')}**  
+                    {item.get('description', '')}  
+                    💸 {item.get('price_range', '')}
+                    """)
+
+            drinks = culinary.get('drinks', [])
+            if drinks:
+                st.markdown("#### 🍷 Drinks")
+                for item in drinks[:2]:
+                    st.markdown(f"""
+                    **{item.get('name', 'Drink Name')}**  
+                    {item.get('description', '')}  
+                    💸 {item.get('price_range', '')}
+                    """)
+
+            desserts = culinary.get('desserts', [])
+            if desserts:
+                st.markdown("#### 🍰 Desserts")
+                for item in desserts[:2]:
+                    st.markdown(f"""
+                    **{item.get('name', 'Dessert Name')}**  
+                    {item.get('description', '')}  
+                    💸 {item.get('price_range', '')}
+                    """)
+
+        st.markdown("### 🥂 Where to Experience Local Cuisine")
+        
+        v_cols = st.columns(3)
+
+        venues_traditional = culinary.get('venues_traditional', [])
+        if venues_traditional:
+            with v_cols[0]:
+                st.markdown(f"#### 🥩 Traditional Cuisine")
+                for venue in venues_traditional:
+                    st.markdown(f"""
+                    **{venue.get('name', 'Venue Name')}**  
+                    📍 {venue.get('district', '')} | {venue.get('type', '')}  
+                    💸 {venue.get('price_range', '')}  
+                    ✨ *{venue.get('signature_items', '')}*
+                    """)
+
+        venues_cafes = culinary.get('venues_cafes', [])
+        if venues_cafes:
+            with v_cols[1]:
+                st.markdown(f"#### ☕ Cafés & Desserts")
+                for venue in venues_cafes:
+                    st.markdown(f"""
+                    **{venue.get('name', 'Venue Name')}**  
+                    📍 {venue.get('district', '')} | {venue.get('type', '')}  
+                    💸 {venue.get('price_range', '')}  
+                    ✨ *{venue.get('signature_items', '')}*
+                    """)
+
+        venues_bars = culinary.get('venues_bars', [])
+        if venues_bars:
+            with v_cols[2]:
+                st.markdown(f"#### 🍷 Wine & Bars")
+                for venue in venues_bars:
+                    st.markdown(f"""
+                    **{venue.get('name', 'Venue Name')}**  
+                    📍 {venue.get('district', '')} | {venue.get('type', '')}  
+                    💸 {venue.get('price_range', '')}  
+                    ✨ *{venue.get('signature_items', '')}*
+                    """)
+
 def render_results(plan):
     st.success(f"Your trip plan to: **{plan['destination']}** is ready!")
 
@@ -175,23 +269,15 @@ def render_results(plan):
             
             st.markdown("""
                     </ul>
-                    
-                    <h5 style="margin-top: 20px;">🍽️ Gastronomy</h5>
+
             """, unsafe_allow_html=True)
-            
-            meals = day.get('meals', {})
-            if meals:
-                 st.markdown(f"<b>🍳 Breakfast:</b> {meals.get('breakfast', 'N/A')}<br>", unsafe_allow_html=True)
-                 st.markdown(f"<b>🥗 Lunch:</b> {meals.get('lunch', 'N/A')}<br>", unsafe_allow_html=True)
-                 st.markdown(f"<b>🍰 Snack:</b> {meals.get('snack', 'N/A')}<br>", unsafe_allow_html=True)
-                 st.markdown(f"<b>🍷 Dinner:</b> {meals.get('dinner', 'N/A')}", unsafe_allow_html=True)
-            else:
-                 st.markdown("<i>No specific meal recommendations for today.</i>", unsafe_allow_html=True)
 
             st.markdown("""
                     </div>
                 </div>
             """, unsafe_allow_html=True)
+
+    render_culinary_section(plan)
 
     st.markdown('<div class="stCard">', unsafe_allow_html=True)
     st.markdown("### 🤔 Are you happy with this plan?")

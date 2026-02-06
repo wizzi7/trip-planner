@@ -53,7 +53,8 @@ class OrchestratorAgent(BaseAgent):
             total_cost=final_snapshot["total_cost"],
             days=final_snapshot["days"],
             usage_stats=final_snapshot["token_usage"],
-            metadata={"constraints": final_snapshot["constraints"]}
+            metadata={"constraints": final_snapshot["constraints"]},
+            culinary_section=final_snapshot.get("culinary_section", None)
         )
         plan.days = final_snapshot["days"] 
         

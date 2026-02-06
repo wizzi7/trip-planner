@@ -18,13 +18,27 @@ class BaseAgent:
     async def run(self, world: "WorldState", bus: "EventBus") -> Any:
         raise NotImplementedError
 
-    def call_openrouter(self, system_prompt: str, user_prompt: str, json_response: bool = True) -> Any:
+    def call_openrouter(self, system_prompt: str, user_prompt: str, json_response: bool = True, model: str = None, max_tokens: int = None) -> Any:
         if not self.api_key:
             self.logger.error("No API Key found.")
             return None
 
         self.logger.info("Calling OpenRouter...")
+        model = model or "openai/gpt-3.5-turbo"
         
+        payload = {
+            "model": model,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ]
+        }
+        
+        if max_tokens:
+            payload["max_tokens"] = max_tokens
+            
+        self.logger.info(f"DEBUG PAYLOAD: max_tokens={payload.get('max_tokens', 'NOT SET')}")
+
         try:
             response = requests.post(
                 url="https://openrouter.ai/api/v1/chat/completions",
@@ -33,13 +47,7 @@ class BaseAgent:
                     "HTTP-Referer": "http://localhost:8000",
                     "X-Title": "TripPlanner",
                 },
-                json={
-                    "model": "openai/gpt-3.5-turbo",
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt}
-                    ]
-                }
+                json=payload
             )
             
             if response.status_code == 200:
