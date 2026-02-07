@@ -19,12 +19,18 @@ class UserInput(BaseModel):
     extra_req: Optional[str] = None
     llm_settings: Optional[LLMSettings] = None
 
+class Activity(BaseModel):
+    time: Optional[str] = Field(None, description="Estimated visiting time (optional)")
+    name: str = Field(..., description="Name of the attraction")
+    description: str = Field(..., description="Brief one-sentence explanation")
+    duration: str = Field(..., description="Duration string, e.g. '1.5h'")
+
 class TripDay(BaseModel):
     day: int
     date: str
     theme: str
     summary: str
-    activities: List[str]
+    activities: List[Activity]
     estimated_cost: str
 
 class CulinaryDish(BaseModel):

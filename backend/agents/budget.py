@@ -36,9 +36,10 @@ class BudgetAgent(BaseAgent):
 
             plan_summary = []
             for day in plan_days:
+                activities_summary = [f"{act.name} ({act.duration})" for act in day.activities]
                 plan_summary.append({
                     "day": day.day,
-                    "activities": day.activities
+                    "activities": activities_summary
                 })
 
             system_prompt = (

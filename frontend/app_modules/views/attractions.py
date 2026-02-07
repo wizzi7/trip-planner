@@ -10,15 +10,37 @@ def render_daily_activities(day):
 
         st.markdown("""
                 <h5 style="padding-bottom: 5px;">🏛️ Attractions</h5>
-                <ul style="margin-bottom: 0;">
+                <ul style="list-style-type: none; padding-left: 0;">
         """, unsafe_allow_html=True)
 
         for act in day.get('activities', []):
-            st.markdown(f"<li>{act}</li>", unsafe_allow_html=True)
+            if isinstance(act, str):
+                st.markdown(f"<li>{act}</li>", unsafe_allow_html=True)
+            else:
+                if hasattr(act, 'model_dump'):
+                    act = act.model_dump()
+                elif hasattr(act, '__dict__'):
+                     act = act.__dict__
+
+                if isinstance(act, dict):
+                    name = act.get('name', 'Unknown')
+                    desc = act.get('description', '')
+                    duration = act.get('duration', '')
+                    
+                    st.markdown(
+                        f"""
+                        <li style="margin-bottom: 10px; border-left: 3px solid #FF4B4B; padding-left: 10px;">
+                            <strong>{name}</strong> <span style="color: gray;">({duration})</span><br>
+                            <span style="font-size: 0.9em;">{desc}</span>
+                        </li>
+                        """, 
+                        unsafe_allow_html=True
+                    )
+                else:
+                    st.markdown(f"<li>{str(act)}</li>", unsafe_allow_html=True)
         
         st.markdown("""
                 </ul>
-
         """, unsafe_allow_html=True)
 
         st.markdown("""
