@@ -20,7 +20,7 @@ class PreferencesAgent(BaseAgent):
             f"Guests: {world.user_input.guests}\n"
         )
 
-        constraints, usage = self.call_openrouter(system_prompt, user_prompt, json_response=True)
+        constraints, usage = self.call_gemini(system_prompt, user_prompt, json_response=True)
         
         async with world.lock:
              world.token_usage[self.name] = usage

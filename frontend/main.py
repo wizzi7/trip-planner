@@ -49,6 +49,8 @@ def main():
             st.write("No plans generated in this session.")
         else:
             for i, plan in enumerate(reversed(st.session_state.plan_history)):
+                if plan is None:
+                    continue
                 label = f"{plan.get('destination', 'Plan')} #{len(st.session_state.plan_history)-i}"
                 if st.button(label, key=f"hist_{i}"):
                     st.session_state.current_plan = plan
@@ -82,10 +84,16 @@ def main():
         else:
             plan = api_service.generate_plan(data, llm_settings=llm_settings)
         
-        st.session_state.current_plan = plan
-        st.session_state.plan_history.append(plan)
-        st.session_state.page = 'results'
-        st.rerun()
+        if plan:
+            st.session_state.current_plan = plan
+            st.session_state.plan_history.append(plan)
+            st.session_state.page = 'results'
+            st.rerun()
+        else:
+            st.error("Failed to generate plan. Please try again.")
+            if st.button("Go Back"):
+                st.session_state.page = 'form'
+                st.rerun()
         
     elif st.session_state.page == 'results':
         if 'current_plan' in st.session_state:

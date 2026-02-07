@@ -5,9 +5,6 @@ import os
 class GastronomyAgent(BaseAgent):
     def __init__(self):
         super().__init__(name="GastronomyAgent")
-        custom_key = os.environ.get("GASTRONOMY_OPENROUTER_API_KEY")
-        if custom_key:
-            self.api_key = custom_key
 
     async def run(self, world: "WorldState", bus: "EventBus"):
         self.logger.info("Waiting for itinerary...")
@@ -55,7 +52,7 @@ class GastronomyAgent(BaseAgent):
             "Please provide a global culinary guide for this destination."
         )
 
-        response_data, usage = self.call_openrouter(system_prompt, user_prompt, json_response=True, max_tokens=2600)
+        response_data, usage = self.call_gemini(system_prompt, user_prompt, json_response=True, max_tokens=5000)
         
         async with world.lock:
              world.token_usage[self.name] = usage

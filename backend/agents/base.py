@@ -1,8 +1,8 @@
 from typing import Any, Dict
 import os
-import requests
 import json
-import re
+import google.genai as genai
+from google.genai import types
 from dotenv import load_dotenv
 import logging
 from backend.pricing import MODEL_PRICING
@@ -13,55 +13,46 @@ class BaseAgent:
     def __init__(self, name: str, state: Dict[str, Any] = None):
         self.name = name
         self.state = state or {}
-        self.api_key = os.environ.get("OPENROUTER_API_KEY")
+        self.api_key = os.environ.get("GOOGLE_API_KEY")
         self.logger = logging.getLogger(name)
+        self.client = genai.Client(api_key=self.api_key)
 
     async def run(self, world: "WorldState", bus: "EventBus") -> Any:
         raise NotImplementedError
 
-    def call_openrouter(self, system_prompt: str, user_prompt: str, json_response: bool = True, model: str = None, max_tokens: int = None) -> Any:
-        if not self.api_key:
-            self.logger.error("No API Key found.")
-            return None
+    def call_gemini(self, system_prompt: str, user_prompt: str, json_response: bool = True, model: str = "gemini-2.0-flash", max_tokens: int = None) -> Any:
+        if not self.client:
+            self.logger.error("No Google API Key found or Client not initialized.")
+            return None, {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0, "cost": 0.0, "model": "unknown"}
 
-        self.logger.info("Calling OpenRouter...")
-        model = model or "openai/gpt-3.5-turbo"
+        self.logger.info(f"Calling Gemini ({model})...")
         
-        payload = {
-            "model": model,
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ]
-        }
-        
-        if max_tokens:
-            payload["max_tokens"] = max_tokens
-            
-        self.logger.info(f"DEBUG PAYLOAD: max_tokens={payload.get('max_tokens', 'NOT SET')}")
-
         try:
-            response = requests.post(
-                url="https://openrouter.ai/api/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {self.api_key}",
-                    "HTTP-Referer": "http://localhost:8000",
-                    "X-Title": "TripPlanner",
-                },
-                json=payload
+            config_args = {
+                "temperature": 0.7,
+                "system_instruction": system_prompt
+            }
+            if max_tokens:
+                config_args["max_output_tokens"] = max_tokens
+            
+            if json_response:
+                config_args["response_mime_type"] = "application/json"
+
+            response = self.client.models.generate_content(
+                model=model,
+                contents=user_prompt,
+                config=types.GenerateContentConfig(**config_args)
             )
             
-            if response.status_code == 200:
-                data = response.json()
-                content = data['choices'][0]['message']['content']
-                usage_raw = data.get('usage', {})
-                input_tokens = usage_raw.get('prompt_tokens', 0)
-                output_tokens = usage_raw.get('completion_tokens', 0)
-                total_tokens = usage_raw.get('total_tokens', 0)
+            if response.text:
+                content = response.text
+                usage = response.usage_metadata
+
+                input_tokens = usage.prompt_token_count if usage else 0
+                output_tokens = usage.candidates_token_count if usage else 0
+                total_tokens = usage.total_token_count if usage else 0
                 
-                model_used = data.get('model', 'openai/gpt-3.5-turbo')
-                pricing = MODEL_PRICING.get(model_used, MODEL_PRICING["openai/gpt-3.5-turbo"])
-                
+                pricing = MODEL_PRICING.get(model, MODEL_PRICING["gemini-2.0-flash"])
                 cost = (input_tokens / 1_000_000 * pricing["input"]) + (output_tokens / 1_000_000 * pricing["output"])
                 
                 usage_stats = {
@@ -69,23 +60,21 @@ class BaseAgent:
                     "output_tokens": output_tokens,
                     "total_tokens": total_tokens,
                     "cost": cost,
-                    "model": model_used
+                    "model": model
                 }
                 
                 if json_response:
-                    content = content.replace("```json", "").replace("```", "").strip()
-                    content = re.sub(r',\s*([\]}])', r'\1', content)
-                    
-                    try:
+                     try:
                         return json.loads(content), usage_stats
-                    except json.JSONDecodeError:
+                     except json.JSONDecodeError:
                         self.logger.error(f"Failed to parse JSON: {content}")
                         return None, usage_stats
+                
                 return content, usage_stats
             else:
-                self.logger.error(f"API Error: {response.status_code} - {response.text}")
-                return None, {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0, "cost": 0.0, "model": "unknown"}
-                
+                self.logger.error("Empty response from Gemini")
+                return None, {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0, "cost": 0.0, "model": model}
+
         except Exception as e:
             self.logger.error(f"Execution Error: {e}")
-            return None
+            return None, {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0, "cost": 0.0, "model": model}

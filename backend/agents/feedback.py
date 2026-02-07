@@ -21,8 +21,8 @@ class FeedbackAgent(BaseAgent):
             f"Feedback: {feedback}\n"
         )
         
-        analysis = self.call_openrouter(system_prompt, user_prompt, json_response=True)
-        updated_input = user_input.copy()
+        analysis, usage = self.call_gemini(system_prompt, user_prompt, json_response=True)
+        updated_input = user_input.model_copy()
         directives = {}
 
         if analysis:

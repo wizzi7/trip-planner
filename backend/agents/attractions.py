@@ -54,7 +54,7 @@ class AttractionsAgent(BaseAgent):
             f"Please generate a {num_days}-day itinerary. Return ONLY the JSON array."
         )
 
-        parsed_days, usage = self.call_openrouter(system_prompt, user_prompt, json_response=True)
+        parsed_days, usage = self.call_gemini(system_prompt, user_prompt, json_response=True)
         
         async with world.lock:
              world.token_usage[self.name] = usage

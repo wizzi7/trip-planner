@@ -42,7 +42,7 @@ class TransportationAgent(BaseAgent):
             "Please provide the City Mobility Guide."
         )
 
-        response_data, usage = self.call_openrouter(system_prompt, user_prompt, json_response=True, max_tokens=2000)
+        response_data, usage = self.call_gemini(system_prompt, user_prompt, json_response=True, max_tokens=4000)
         
         async with world.lock:
              world.token_usage[self.name] = usage
