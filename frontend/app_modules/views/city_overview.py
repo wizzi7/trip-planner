@@ -19,5 +19,9 @@ def render_city_history_culture(overview):
         st.markdown(f"## 📜 History & Culture")
         history_text = overview.get('history_summary', '')
         culture_text = overview.get('cultural_identity', '')
-        st.markdown(f"**History:** {history_text}")
-        st.markdown(f"**Culture:** {culture_text}")
+        st.markdown(f"""
+            <div style="background-color: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                <p style="margin-bottom: 10px;"><strong>History:</strong> {history_text}</p>
+                <p style="margin-bottom: 0;"><strong>Culture:</strong> {culture_text}</p>
+            </div>
+        """, unsafe_allow_html=True)
