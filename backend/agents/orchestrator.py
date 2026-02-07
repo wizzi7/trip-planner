@@ -3,6 +3,7 @@ from backend.world_state import WorldState
 from backend.event_bus import InMemoryEventBus
 import asyncio
 from backend.agents.base import BaseAgent
+from backend.agents.city_overview import CityOverviewAgent
 from backend.agents.preferences import PreferencesAgent
 from backend.agents.attractions import AttractionsAgent
 from backend.agents.transport import TransportationAgent
@@ -17,6 +18,7 @@ class OrchestratorAgent(BaseAgent):
         self.gastronomy_agent = GastronomyAgent()
         self.transport_agent = TransportationAgent()
         self.budget_agent = BudgetAgent()
+        self.city_overview_agent = CityOverviewAgent()
 
     async def run(self, user_input: UserInput) -> TripPlan:
         self.logger.info(f"Starting MAS planning for {user_input.destination}")
@@ -29,7 +31,8 @@ class OrchestratorAgent(BaseAgent):
             self.attractions_agent,
             self.gastronomy_agent,
             self.transport_agent,
-            self.budget_agent
+            self.budget_agent,
+            self.city_overview_agent
         ]
         
         tasks = [asyncio.create_task(agent.run(world, bus)) for agent in agents]
@@ -55,7 +58,8 @@ class OrchestratorAgent(BaseAgent):
             usage_stats=final_snapshot["token_usage"],
             metadata={"constraints": final_snapshot["constraints"]},
             culinary_section=final_snapshot.get("culinary_section", None),
-            mobility_section=final_snapshot.get("mobility_section", None)
+            mobility_section=final_snapshot.get("mobility_section", None),
+            city_overview=final_snapshot.get("city_overview", None)
         )
         plan.days = final_snapshot["days"] 
         

@@ -121,6 +121,12 @@ class UsageStats(BaseModel):
     cost: float
     model: str
 
+class CityOverview(BaseModel):
+    city_name: str
+    short_description: str
+    history_summary: str
+    cultural_identity: str
+
 class TripPlan(BaseModel):
     destination: str
     total_cost: float
@@ -128,6 +134,7 @@ class TripPlan(BaseModel):
     usage_stats: Dict[str, UsageStats] = Field(default_factory=dict)
     culinary_section: Optional[CulinarySection] = None
     mobility_section: Optional[MobilitySection] = None
+    city_overview: Optional[CityOverview] = None
     metadata: Dict[str, Any] = Field(default_factory=dict, description="Metadata from agents (e.g. constraints)")
 
 class UpdateRequest(BaseModel):

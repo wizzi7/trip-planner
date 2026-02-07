@@ -20,7 +20,7 @@ class BaseAgent:
     async def run(self, world: "WorldState", bus: "EventBus") -> Any:
         raise NotImplementedError
 
-    def call_gemini(self, system_prompt: str, user_prompt: str, json_response: bool = True, model: str = "gemini-2.0-flash", max_tokens: int = None) -> Any:
+    def call_gemini(self, system_prompt: str, user_prompt: str, json_response: bool = True, model: str = "gemini-2.5-flash", max_tokens: int = None) -> Any:
         if not self.client:
             self.logger.error("No Google API Key found or Client not initialized.")
             return None, {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0, "cost": 0.0, "model": "unknown"}
@@ -52,7 +52,7 @@ class BaseAgent:
                 output_tokens = usage.candidates_token_count if usage else 0
                 total_tokens = usage.total_token_count if usage else 0
                 
-                pricing = MODEL_PRICING.get(model, MODEL_PRICING["gemini-2.0-flash"])
+                pricing = MODEL_PRICING.get(model, MODEL_PRICING["gemini-2.5-flash"])
                 cost = (input_tokens / 1_000_000 * pricing["input"]) + (output_tokens / 1_000_000 * pricing["output"])
                 
                 usage_stats = {

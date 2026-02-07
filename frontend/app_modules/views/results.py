@@ -3,6 +3,7 @@ from .stats import render_token_usage
 from .gastronomy import render_culinary_section
 from .transport import render_mobility_section
 from .attractions import render_daily_activities
+from .city_overview import render_city_header, render_city_history_culture
 
 def render_results(plan):
     st.success(f"Your trip plan to: **{plan['destination']}** is ready!")
@@ -13,12 +14,17 @@ def render_results(plan):
     col3.metric("Activities", sum(len(d.get('activities', [])) for d in plan['days']))
 
     st.markdown("---")
+    if plan.get('city_overview'):
+        render_city_header(plan['city_overview'])
 
     for day in plan['days']:
         render_daily_activities(day)
 
     render_culinary_section(plan)
     render_mobility_section(plan)
+
+    if plan.get('city_overview'):
+        render_city_history_culture(plan['city_overview'])
 
     st.markdown('<div class="stCard">', unsafe_allow_html=True)
     st.markdown("### 🤔 Are you happy with this plan?")
