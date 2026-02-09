@@ -1,11 +1,18 @@
 from backend.models import CityOverview
 from backend.agents.base import BaseAgent
+import os
 
 class CityOverviewAgent(BaseAgent):
     def __init__(self):
         super().__init__(name="CityOverviewAgent")
 
     async def run(self, world: "WorldState", bus: "EventBus"):
+        if os.environ.get("ENABLE_CITY_OVERVIEW", "true").lower() == "false":
+            self.logger.info("City Overview Agent disabled by ENABLE_CITY_OVERVIEW flag.")
+            async with world.lock:
+                world.city_overview = None
+            return
+
         self.logger.info("Generating city overview...")
         
         async with world.lock:

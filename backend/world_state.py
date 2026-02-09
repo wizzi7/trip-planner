@@ -6,7 +6,7 @@ class WorldState:
     def __init__(self, user_input: UserInput):
         self.user_input = user_input
         self.constraints: Dict[str, Any] = {}
-        self.days: List[TripDay] = []
+        self.days: Optional[List[TripDay]] = None
         self.total_cost: float = 0.0
         self.culinary_section: Optional[CulinarySection] = None
         self.mobility_section: Optional[MobilitySection] = None
@@ -19,7 +19,7 @@ class WorldState:
         async with self.lock:
             return {
                 "constraints": self.constraints.copy(),
-                "days": [d.model_copy() for d in self.days],
+                "days": [d.model_copy() for d in self.days] if self.days is not None else [],
                 "total_cost": self.total_cost,
                 "culinary_section": self.culinary_section.model_copy() if self.culinary_section else None,
                 "mobility_section": self.mobility_section.model_copy() if self.mobility_section else None,

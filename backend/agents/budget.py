@@ -1,4 +1,5 @@
 from backend.agents.base import BaseAgent
+import os
 
 class BudgetAgent(BaseAgent):
     def __init__(self):
@@ -14,12 +15,12 @@ class BudgetAgent(BaseAgent):
             self.logger.info("Validating budget...")
             
             async with world.lock:
-                plan_days = [d.model_copy() for d in world.days]
+                plan_days = [d.model_copy() for d in world.days] if world.days is not None else None
                 user_input = world.user_input
                 culinary_section = world.culinary_section
 
             # Wait for plan days to be populated
-            if not plan_days:
+            if plan_days is None:
                  self.logger.info("No days yet, waiting...")
                  continue
 
@@ -33,6 +34,15 @@ class BudgetAgent(BaseAgent):
             if culinary_section is None:
                  self.logger.info("Waiting for culinary agent...")
                  continue
+            
+            if os.environ.get("ENABLE_BUDGET", "true").lower() == "false":
+                self.logger.info("Budget Agent disabled by ENABLE_BUDGET flag. Skipping calculation.")
+                async with world.lock:
+                    world.total_cost = 0.0
+                    if "alerts" not in world.constraints:
+                        world.constraints["alerts"] = []
+                await bus.emit("plan_stable")
+                return
 
             plan_summary = []
             for day in plan_days:

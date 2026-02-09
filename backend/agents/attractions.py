@@ -2,6 +2,7 @@ from typing import List
 from backend.models import TripDay
 from backend.agents.base import BaseAgent
 from datetime import datetime, timedelta
+import os
 
 class AttractionsAgent(BaseAgent):
     def __init__(self):
@@ -10,6 +11,13 @@ class AttractionsAgent(BaseAgent):
     async def run(self, world: "WorldState", bus: "EventBus"):
         self.logger.info("Waiting for constraints...")
         await bus.subscribe("constraints_ready")
+
+        if os.environ.get("ENABLE_ATTRACTIONS", "true").lower() == "false":
+             self.logger.info("Attractions Agent disabled by ENABLE_ATTRACTIONS flag.")
+             async with world.lock:
+                 world.days = []
+             await bus.emit("days_planned")
+             return
         
         async with world.lock:
             user_input = world.user_input

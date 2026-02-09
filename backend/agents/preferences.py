@@ -1,10 +1,18 @@
 from backend.agents.base import BaseAgent
+import os
 
 class PreferencesAgent(BaseAgent):
     def __init__(self):
         super().__init__(name="PreferencesAgent")
 
     async def run(self, world: "WorldState", bus: "EventBus"):
+        if os.environ.get("ENABLE_PREFERENCES", "true").lower() == "false":
+            self.logger.info("Preferences Agent disabled by ENABLE_PREFERENCES flag.")
+            async with world.lock:
+                world.constraints = {}
+            await bus.emit("constraints_ready")
+            return
+
         self.logger.info(f"Extracting constraints for {world.user_input.destination}")
         
         system_prompt = (

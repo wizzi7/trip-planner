@@ -1,5 +1,6 @@
 from backend.agents.base import BaseAgent
 from backend.models import MobilitySection
+import os
 
 class TransportationAgent(BaseAgent):
     def __init__(self):
@@ -8,6 +9,13 @@ class TransportationAgent(BaseAgent):
     async def run(self, world: "WorldState", bus: "EventBus"):
         self.logger.info("Waiting for itinerary...")
         await bus.subscribe("days_planned")
+
+        if os.environ.get("ENABLE_TRANSPORT", "true").lower() == "false":
+            self.logger.info("Transportation Agent disabled by ENABLE_TRANSPORT flag.")
+            async with world.lock:
+                world.mobility_section = MobilitySection()
+            await bus.emit("cost_updated")
+            return
 
         async with world.lock:
              user_input = world.user_input
