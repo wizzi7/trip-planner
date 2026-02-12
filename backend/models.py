@@ -2,7 +2,8 @@ from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 
 class LLMSettings(BaseModel):
-    model: str = "gpt-4"
+    provider: str = "gemini"
+    model: str = "gemini-2.5-flash"
     temperature: float = 0.7
     max_tokens: int = 2000
 
@@ -18,6 +19,7 @@ class UserInput(BaseModel):
     interests: List[str] = Field(default_factory=list)
     extra_req: Optional[str] = None
     llm_settings: Optional[LLMSettings] = None
+    active_agents: List[str] = Field(default_factory=lambda: ["PreferencesAgent", "AttractionsAgent", "GastronomyAgent", "TransportationAgent", "BudgetAgent", "CityOverviewAgent"])
 
 class Activity(BaseModel):
     time: Optional[str] = Field(None, description="Estimated visiting time (optional)")

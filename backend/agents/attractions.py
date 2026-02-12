@@ -5,8 +5,8 @@ from datetime import datetime, timedelta
 import os
 
 class AttractionsAgent(BaseAgent):
-    def __init__(self):
-        super().__init__(name="AttractionsAgent")
+    def __init__(self, llm_provider=None, model_name=None):
+        super().__init__(name="AttractionsAgent", llm_provider=llm_provider, model_name=model_name)
 
     async def run(self, world: "WorldState", bus: "EventBus"):
         self.logger.info("Waiting for constraints...")
@@ -70,7 +70,7 @@ class AttractionsAgent(BaseAgent):
             f"Please generate a {num_days}-day itinerary. Return ONLY the JSON array."
         )
 
-        parsed_days, usage = self.call_gemini(system_prompt, user_prompt, json_response=True)
+        parsed_days, usage = self.call_llm(system_prompt, user_prompt, json_response=True)
         
         async with world.lock:
              world.token_usage[self.name] = usage

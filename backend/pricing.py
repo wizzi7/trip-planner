@@ -38,5 +38,13 @@ MODEL_PRICING = {
     "gemini-2.5-flash": { 
         "input": 0.10,
         "output": 0.40
+    },
+    "gpt-4o": {
+        "input": 5.00,
+        "output": 15.00
+    },
+    "gpt-3.5-turbo": {
+        "input": 0.50,
+        "output": 1.50
     }
 }

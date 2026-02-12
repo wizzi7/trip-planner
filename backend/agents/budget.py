@@ -2,8 +2,8 @@ from backend.agents.base import BaseAgent
 import os
 
 class BudgetAgent(BaseAgent):
-    def __init__(self):
-        super().__init__(name="BudgetAgent")
+    def __init__(self, llm_provider=None, model_name=None):
+        super().__init__(name="BudgetAgent", llm_provider=llm_provider, model_name=model_name)
 
     async def run(self, world: "WorldState", bus: "EventBus"):
         self.logger.info("Monitoring budget...")
@@ -84,7 +84,7 @@ class BudgetAgent(BaseAgent):
                  "Estimate costs now."
             )
 
-            response_data, usage = self.call_gemini(system_prompt, user_prompt, json_response=True)
+            response_data, usage = self.call_llm(system_prompt, user_prompt, json_response=True)
             
             async with world.lock:
                  world.token_usage[self.name] = usage

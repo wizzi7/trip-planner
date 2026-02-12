@@ -3,8 +3,8 @@ from backend.models import MobilitySection
 import os
 
 class TransportationAgent(BaseAgent):
-    def __init__(self):
-        super().__init__(name="TransportationAgent")
+    def __init__(self, llm_provider=None, model_name=None):
+        super().__init__(name="TransportationAgent", llm_provider=llm_provider, model_name=model_name)
 
     async def run(self, world: "WorldState", bus: "EventBus"):
         self.logger.info("Waiting for itinerary...")
@@ -50,7 +50,7 @@ class TransportationAgent(BaseAgent):
             "Please provide the City Mobility Guide."
         )
 
-        response_data, usage = self.call_gemini(system_prompt, user_prompt, json_response=True, max_tokens=4000)
+        response_data, usage = self.call_llm(system_prompt, user_prompt, json_response=True, max_tokens=4000)
         
         async with world.lock:
              world.token_usage[self.name] = usage
@@ -67,5 +67,15 @@ class TransportationAgent(BaseAgent):
                 self.logger.error(f"Problematic data: {response_data}")
         else:
              self.logger.warning("Failed to generate mobility section.")
+             async with world.lock:
+                 world.mobility_section = MobilitySection(
+                     public_transport=None,
+                     taxis=None,
+                     walking=None,
+                     bikes=None,
+                     ferries=None,
+                     car_rental=None,
+                     quick_recommendations=None
+                 )
             
         await bus.emit("cost_updated")

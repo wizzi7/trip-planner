@@ -2,8 +2,8 @@ from backend.agents.base import BaseAgent
 import os
 
 class PreferencesAgent(BaseAgent):
-    def __init__(self):
-        super().__init__(name="PreferencesAgent")
+    def __init__(self, llm_provider=None, model_name=None):
+        super().__init__(name="PreferencesAgent", llm_provider=llm_provider, model_name=model_name)
 
     async def run(self, world: "WorldState", bus: "EventBus"):
         if os.environ.get("ENABLE_PREFERENCES", "true").lower() == "false":
@@ -28,7 +28,7 @@ class PreferencesAgent(BaseAgent):
             f"Guests: {world.user_input.guests}\n"
         )
 
-        constraints, usage = self.call_gemini(system_prompt, user_prompt, json_response=True)
+        constraints, usage = self.call_llm(system_prompt, user_prompt, json_response=True)
         
         async with world.lock:
              world.token_usage[self.name] = usage

@@ -30,9 +30,10 @@ def main():
 
     with st.sidebar:
         with st.expander("⚙️ AI Settings", expanded=False):
+            model_options = ["gemini-2.5-flash", "gpt-5-nano"]
             model_name = st.selectbox(
                 "Model", 
-                ["gemini-2.5-flash", "gpt-4", "gpt-3.5-turbo", "claude-3-opus", "gemini-pro"],
+                model_options,
                 index=0
             )
             temperature = st.slider("Temperature", min_value=0.0, max_value=1.0, value=0.7, step=0.1)

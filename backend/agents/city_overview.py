@@ -3,8 +3,8 @@ from backend.agents.base import BaseAgent
 import os
 
 class CityOverviewAgent(BaseAgent):
-    def __init__(self):
-        super().__init__(name="CityOverviewAgent")
+    def __init__(self, llm_provider=None, model_name=None):
+        super().__init__(name="CityOverviewAgent", llm_provider=llm_provider, model_name=model_name)
 
     async def run(self, world: "WorldState", bus: "EventBus"):
         if os.environ.get("ENABLE_CITY_OVERVIEW", "true").lower() == "false":
@@ -38,7 +38,7 @@ class CityOverviewAgent(BaseAgent):
             f"Please generate the City Overview now."
         )
 
-        response_data, usage = self.call_gemini(system_prompt, user_prompt, json_response=True)
+        response_data, usage = self.call_llm(system_prompt, user_prompt, json_response=True)
         
         async with world.lock:
             world.token_usage[self.name] = usage
@@ -53,3 +53,10 @@ class CityOverviewAgent(BaseAgent):
                 self.logger.error(f"Failed to parse CityOverview: {e}")
         else:
              self.logger.error("Failed to generate City Overview.")
+             async with world.lock:
+                 world.city_overview = CityOverview(
+                     city_name=user_input.destination,
+                     short_description="City overview unavailable due to service error.",
+                     history_summary="Information unavailable.",
+                     cultural_identity="Information unavailable."
+                 )

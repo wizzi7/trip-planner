@@ -21,7 +21,7 @@ class FeedbackAgent(BaseAgent):
             f"Feedback: {feedback}\n"
         )
         
-        analysis, usage = self.call_gemini(system_prompt, user_prompt, json_response=True)
+        analysis, usage = self.call_llm(system_prompt, user_prompt, json_response=True)
         updated_input = user_input.model_copy()
         directives = {}
 
