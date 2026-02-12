@@ -65,8 +65,8 @@ class MobilityOption(BaseModel):
 
 class MobilitySystem(BaseModel):
     available_options: List[str]
-    ticket_types: Any
-    approximate_prices: Any
+    ticket_types: str
+    approximate_prices: str
     coverage_quality: str
     useful_apps: List[str]
     best_use_cases: str
@@ -81,14 +81,14 @@ class RideHailing(BaseModel):
 
 class WalkingGuide(BaseModel):
     is_walkable: bool
-    best_areas: str
+    best_areas: List[str]
 
 class BikeScooter(BaseModel):
     available: bool
     providers: List[str]
     price_range: str
     convenience: str
-    cautions: str
+    cautions: List[str]
 
 class FerryBoat(BaseModel):
     is_relevant: bool
@@ -105,7 +105,7 @@ class QuickRecommendations(BaseModel):
     best_overall: str
     cheapest: str
     most_convenient: str
-    avoid: str
+    avoid: List[str]
 
 class MobilitySection(BaseModel):
     public_transport: Optional[MobilitySystem] = None

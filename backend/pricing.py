@@ -46,5 +46,9 @@ MODEL_PRICING = {
     "gpt-3.5-turbo": {
         "input": 0.50,
         "output": 1.50
+    },
+    "claude-haiku-4-5-20251001": {
+        "input": 0.25,
+        "output": 1.25
     }
 }

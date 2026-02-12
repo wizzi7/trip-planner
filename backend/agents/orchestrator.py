@@ -22,8 +22,12 @@ class OrchestratorAgent(BaseAgent):
         if user_input.llm_settings and user_input.llm_settings.model:
              model_name = user_input.llm_settings.model
 
-        if model_name.startswith("gpt") or model_name.startswith("o1"):
+        if user_input.llm_settings and user_input.llm_settings.provider:
+             provider_name = user_input.llm_settings.provider
+        elif model_name.startswith("gpt") or model_name.startswith("o1"):
             provider_name = "openai"
+        elif "claude" in model_name:
+            provider_name = "claude"
         else:
             provider_name = "gemini"
         

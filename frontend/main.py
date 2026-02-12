@@ -30,7 +30,7 @@ def main():
 
     with st.sidebar:
         with st.expander("⚙️ AI Settings", expanded=False):
-            model_options = ["gemini-2.5-flash", "gpt-5-nano"]
+            model_options = ["gemini-2.5-flash", "gpt-5-nano", "claude-haiku-4-5-20251001"]
             model_name = st.selectbox(
                 "Model", 
                 model_options,
@@ -39,8 +39,16 @@ def main():
             temperature = st.slider("Temperature", min_value=0.0, max_value=1.0, value=0.7, step=0.1)
             max_tokens = st.number_input("Max Tokens", min_value=100, max_value=8000, value=2000, step=100)
             
+            if "gpt" in model_name:
+                provider = "openai"
+            elif "claude" in model_name:
+                provider = "claude"
+            else:
+                provider = "gemini"
+            
             st.session_state.llm_settings = {
                 "model": model_name,
+                "provider": provider,
                 "temperature": temperature,
                 "max_tokens": max_tokens
             }
