@@ -43,7 +43,7 @@ class OpenAIProvider(LLMProvider):
             }
             
             if max_tokens:
-                kwargs["max_tokens"] = max_tokens
+                kwargs["max_completion_tokens"] = max_tokens
             
             if json_response:
                 kwargs["response_format"] = {"type": "json_object"}

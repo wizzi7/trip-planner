@@ -9,3 +9,4 @@ pytest
 pytest-asyncio
 google-genai
 anthropic
+selenium

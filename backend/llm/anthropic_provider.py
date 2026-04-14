@@ -80,8 +80,21 @@ class AnthropicProvider(LLMProvider):
                     else:
                         first_brace = content.find('{')
                         last_brace = content.rfind('}')
-                        if first_brace != -1 and last_brace != -1:
+                        first_bracket = content.find('[')
+                        last_bracket = content.rfind(']')
+
+                        has_obj = first_brace != -1 and last_brace != -1
+                        has_arr = first_bracket != -1 and last_bracket != -1
+
+                        if has_obj and has_arr:
+                            if first_brace < first_bracket:
+                                cleaned_content = content[first_brace:last_brace+1]
+                            else:
+                                cleaned_content = content[first_bracket:last_bracket+1]
+                        elif has_obj:
                             cleaned_content = content[first_brace:last_brace+1]
+                        elif has_arr:
+                            cleaned_content = content[first_bracket:last_bracket+1]
                         else:
                             cleaned_content = content.strip()
                     
