@@ -51,7 +51,7 @@ class TransportationAgent(BaseAgent):
         
         user_prompt = (
             f"Destination: {user_input.destination}\n"
-            f"Budget Per Person: {user_input.budget}\n"
+            f"Total Trip Budget: {user_input.budget * user_input.guests} (for {user_input.guests} guests, {user_input.budget} per person). CRITICAL: Highlight economical transport options to ensure the trip stays within this strict budget!\n"
             "Please provide the City Mobility Guide."
         )
 

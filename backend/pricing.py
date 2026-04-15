@@ -39,6 +39,14 @@ MODEL_PRICING = {
         "input": 0.10,
         "output": 0.40
     },
+    "gemini-3.1-flash-lite-preview": { 
+        "input": 0.08,
+        "output": 0.30
+    },
+    "gemini-3.1-pro-preview": {
+        "input": 2.50,
+        "output": 7.50
+    },
     "gpt-4o": {
         "input": 5.00,
         "output": 15.00
@@ -50,5 +58,9 @@ MODEL_PRICING = {
     "claude-haiku-4-5-20251001": {
         "input": 0.25,
         "output": 1.25
+    },
+    "claude-sonnet-4-6": {
+        "input": 3.00,
+        "output": 15.00
     }
 }

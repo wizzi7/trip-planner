@@ -54,8 +54,13 @@ class BudgetAgent(BaseAgent):
 
             system_prompt = (
                 "You are an expert Trip Budget Planner. "
-                "Your task is to estimate the cost for each day of the trip based on the destination, number of guests, and activities. "
-                "You must also provide a total estimated cost and a list of budget alerts if the total exceeds user's budget. "
+                "Your task is to estimate the TOTAL cost for each day of the trip. "
+                "You MUST include ALL of the following cost categories in your estimate for EACH day:\n"
+                "  1. FOOD & DINING — breakfast, lunch, dinner, and drinks/snacks based on the culinary venue price ranges provided below.\n"
+                "  2. ACTIVITIES & ATTRACTIONS — entrance fees, tours, tickets based on the itinerary.\n"
+                "  3. LOCAL TRANSPORT — getting around the city based on the mobility info provided.\n"
+                "The daily cost should be the SUM of all three categories above, multiplied by the number of guests.\n"
+                "You must also provide a total estimated cost and a list of budget alerts if the total exceeds the user's budget. "
                 "Return the response in this JSON format:\n"
                 "{\n"
                 "  \"daily_costs\": { \"1\": \"string cost\", \"2\": \"string cost\", ... },\n"
@@ -64,9 +69,10 @@ class BudgetAgent(BaseAgent):
                 "}\n"
                 "CRITICAL: 'total_estimated_cost' MUST be a raw number (integer or float) WITHOUT any currency symbols or text (e.g., 540, not '540 PLN'). "
                 "Daily costs should be formatted strings with currency. Alerts must be in English. "
-                "Example alert: 'Warning: Total cost exceeds budget by 20%'."
+                "Example alert: 'Warning: Total cost exceeds budget by 20%'.\n"
+                "CRITICAL: Do NOT underestimate food costs. Use the actual venue price ranges provided to calculate realistic meal expenses."
             )
-            
+
             mobility_info = "Transport Info: N/A"
             if mobility_section:
                 mobility_info = (
@@ -75,13 +81,45 @@ class BudgetAgent(BaseAgent):
                     f"Cheapest Option: {mobility_section.quick_recommendations.cheapest if mobility_section.quick_recommendations else 'N/A'}"
                 )
 
+            food_cost_info = "Food Cost Info: N/A"
+            if culinary_section:
+                price_samples = []
+                for label, venues in [
+                    ("Traditional restaurants", culinary_section.venues_traditional),
+                    ("Cafes", culinary_section.venues_cafes),
+                    ("Bars", culinary_section.venues_bars),
+                ]:
+                    if venues:
+                        ranges = [v.price_range for v in venues if v.price_range and v.price_range != "N/A"]
+                        if ranges:
+                            price_samples.append(f"  {label}: {', '.join(ranges[:4])}")
+                for label, dishes in [
+                    ("Main dishes", culinary_section.main_dishes),
+                    ("Soups", culinary_section.soups),
+                    ("Desserts", culinary_section.desserts),
+                    ("Drinks", culinary_section.drinks),
+                ]:
+                    if dishes:
+                        ranges = [d.price_range for d in dishes if d.price_range and d.price_range != "N/A"]
+                        if ranges:
+                            price_samples.append(f"  {label}: {', '.join(ranges[:4])}")
+
+                if price_samples:
+                    food_cost_info = (
+                        "Food & Dining Price Ranges (per person per meal):\n"
+                        + "\n".join(price_samples)
+                        + "\nAssume each guest eats 3 meals per day (breakfast, lunch, dinner) plus drinks/snacks. "
+                        "Use the ACTUAL price ranges above to estimate daily food costs — do NOT guess low."
+                    )
+
             user_prompt = (
                  f"Destination: {user_input.destination}\n"
                  f"Guests: {user_input.guests}\n"
                  f"User Budget: {user_input.budget} per person (Total: {user_input.budget * user_input.guests})\n"
                  f"Mobility Costs Context: {mobility_info}\n"
+                 f"{food_cost_info}\n"
                  f"Itinerary: {plan_summary}\n"
-                 "Estimate costs now."
+                 "Estimate costs now. Remember to include food, activities, and transport for each day."
             )
 
             response_data, usage = self.call_llm(system_prompt, user_prompt, json_response=True)

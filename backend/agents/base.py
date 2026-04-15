@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 import logging
 from dotenv import load_dotenv
 from backend.llm.factory import LLMFactory
@@ -17,13 +17,22 @@ class BaseAgent:
     async def run(self, world: "WorldState", bus: "EventBus") -> Any:
         raise NotImplementedError
 
-    def call_llm(self, system_prompt: str, user_prompt: str, json_response: bool = True, model: str = None, max_tokens: int = None) -> Any:
+    def call_llm(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        json_response: bool = True,
+        model: str = None,
+        max_tokens: int = None,
+        response_schema: Optional[Dict[str, Any]] = None,
+    ) -> Any:
         target_model = model or self.model_name
-        
+
         return self.llm.generate_content(
             system_prompt=system_prompt,
             user_prompt=user_prompt,
             model=target_model,
             json_response=json_response,
-            max_tokens=max_tokens
+            max_tokens=max_tokens,
+            response_schema=response_schema,
         )

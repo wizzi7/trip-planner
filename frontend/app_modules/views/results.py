@@ -27,12 +27,20 @@ def render_results(plan):
         render_city_history_culture(plan['city_overview'])
 
     st.markdown('<div class="stCard">', unsafe_allow_html=True)
-    st.markdown("### 🤔 Are you happy with this plan?")
-    
-    col_yes, col_no = st.columns(2)
-    
+
+    header_col, regen_col = st.columns([4, 1])
+    with header_col:
+        st.markdown("### 🤔 Are you happy with this plan?")
+    with regen_col:
+        regenerate_clicked = st.button("🔁 Regenerate", help="Generate a new plan using the same inputs", use_container_width=True)
+
     regenerate_data = None
-    
+
+    if regenerate_clicked:
+        regenerate_data = "__regenerate__"
+
+    col_yes, col_no = st.columns(2)
+
     with col_yes:
         if st.button("Yes, I love it! 👍"):
             st.balloons()
@@ -46,11 +54,11 @@ def render_results(plan):
                     regenerate_data = feedback
                 else:
                     st.warning("Please enter your feedback before regenerating.")
-    
+
     st.markdown('</div>', unsafe_allow_html=True)
-    
+
     st.markdown('</div>', unsafe_allow_html=True)
-    
+
     render_token_usage(plan)
-    
+
     return regenerate_data

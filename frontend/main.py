@@ -30,7 +30,7 @@ def main():
 
     with st.sidebar:
         with st.expander("⚙️ AI Settings", expanded=False):
-            model_options = ["gemini-2.5-flash", "gpt-5-nano", "claude-haiku-4-5-20251001"]
+            model_options = ["gemini-3.1-pro-preview", "gpt-5.4", "claude-sonnet-4-6"]
             model_name = st.selectbox(
                 "Model", 
                 model_options,
@@ -107,8 +107,12 @@ def main():
     elif st.session_state.page == 'results':
         if 'current_plan' in st.session_state:
             regenerate_feedback = views.render_results(st.session_state.current_plan)
-            
-            if regenerate_feedback:
+
+            if regenerate_feedback == "__regenerate__":
+                st.session_state.feedback_loop = None
+                st.session_state.page = 'loading'
+                st.rerun()
+            elif regenerate_feedback:
                 st.session_state.feedback_loop = regenerate_feedback
                 st.session_state.page = 'loading'
                 st.rerun()

@@ -18,7 +18,7 @@ class OrchestratorAgent(BaseAgent):
     async def run(self, user_input: UserInput) -> TripPlan:
         self.logger.info(f"Starting MAS planning for {user_input.destination}")
 
-        model_name = "gemini-2.5-flash"
+        model_name = "gemini-3.1-pro-preview"
         if user_input.llm_settings and user_input.llm_settings.model:
              model_name = user_input.llm_settings.model
 
@@ -51,7 +51,7 @@ class OrchestratorAgent(BaseAgent):
         
         self.logger.info("Agents started. Waiting for completion...")
         try:
-            await asyncio.wait_for(asyncio.gather(*tasks), timeout=60.0)
+            await asyncio.wait_for(asyncio.gather(*tasks), timeout=300.0)
         except asyncio.TimeoutError:
             self.logger.error("Timed out waiting for agents. Dependency missing or LLM slow.")
         except Exception as e:

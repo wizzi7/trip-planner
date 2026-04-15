@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Dict, Any, Tuple
+from typing import Dict, Any, Tuple, Optional
 
 class LLMProvider(ABC):
     @abstractmethod
@@ -10,6 +10,7 @@ class LLMProvider(ABC):
         model: str,
         json_response: bool = True,
         max_tokens: int = None,
-        temperature: float = 0.7
+        temperature: float = 0.7,
+        response_schema: Optional[Dict[str, Any]] = None,
     ) -> Tuple[Any, Dict[str, Any]]:
         pass

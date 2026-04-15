@@ -22,14 +22,49 @@ class GastronomyAgent(BaseAgent):
 
         self.logger.info("Finding culinary experiences...")
 
+        budget_per_person = user_input.budget
+        num_days = max(1, len(getattr(world, 'days', []) or [1]))
+        daily_budget_pp = budget_per_person / max(num_days, 1)
+
+        if daily_budget_pp < 80:
+            budget_tier = "LOW"
+            tier_guidance = (
+                "The traveler is on a TIGHT BUDGET. "
+                "Focus on the cheapest dining options available: street food stalls, milk bars (bar mleczny), "
+                "self-service canteens, budget bistros, and affordable local eateries. "
+                "Avoid any upscale, fine-dining, or premium restaurants. "
+                "All recommended venues should be in the budget-friendly segment where a full meal costs well under 40 PLN per person. "
+                "Prioritize value-for-money and large portions at low prices."
+            )
+        elif daily_budget_pp < 200:
+            budget_tier = "MEDIUM"
+            tier_guidance = (
+                "The traveler has a MODERATE BUDGET. "
+                "Recommend a balanced mix of mid-range restaurants, popular local spots, and a few affordable options. "
+                "Venues should offer good quality at reasonable prices — think well-reviewed neighborhood restaurants, "
+                "popular trattorias, and established cafes. Avoid both the cheapest street food and the most expensive fine dining."
+            )
+        else:
+            budget_tier = "HIGH"
+            tier_guidance = (
+                "The traveler has a GENEROUS BUDGET. "
+                "Recommend upscale, high-end, and fine-dining restaurants, acclaimed chef-driven venues, "
+                "Michelin-rated or award-winning establishments, premium cocktail bars, and exclusive culinary experiences. "
+                "The venues should feel luxurious and premium. Do NOT suggest cheap street food or budget canteens — "
+                "the traveler wants to splurge and enjoy the best gastronomy the destination has to offer."
+            )
+
+        self.logger.info(f"Budget tier: {budget_tier} (daily per person ≈ {daily_budget_pp:.0f})")
+
         system_prompt = (
             "You are an expert Culinary Guide and Food Critic. "
             "Your goal is to provide a single, comprehensive culinary guide for the entire trip destination. "
             "This guide is inspirational and NOT tied to specific days. "
-            "Respect the user's budget. "
+            f"\n\nBUDGET TIER: {budget_tier}. {tier_guidance}\n\n"
+            "CRITICAL: The price ranges of ALL dishes and venues MUST be consistent with the budget tier described above. "
             "CRITICAL: For 'price_range', strictly use a numeric range with the LOCAL CURRENCY of the destination (e.g., '15-25 EUR', '30-50 PLN', '1500-2500 JPY'). Do NOT use terms like 'Low', 'Medium', 'High'. "
             "CRITICAL: You MUST provide at least SIX (6) distinct items for 'main_dishes'. Main dishes cannot be soups. These are hard requirements. "
-            "For 'soups', 'desserts', and 'drinks', provide at 2 distinct items each. "
+            "For 'soups', 'desserts', and 'drinks', provide at least 2 distinct items each. "
             "CRITICAL: For 'drinks', strictly use GENERAL CATEGORIES (e.g., 'Vodka', 'Local Beer', 'Fruit Compote') rather than specific brand names. "
             "CRITICAL: For every venue category (traditional, cafes, bars), you MUST provide at least FOUR (4) distinct venues. "
             "DO NOT BE LAZY. You will be penalized for providing fewer than 4 venues per category. "
@@ -47,9 +82,11 @@ class GastronomyAgent(BaseAgent):
 
         user_prompt = (
             f"Destination: {user_input.destination}\n"
-            f"Budget Per Person: {user_input.budget}\n"
+            f"Total Trip Budget: {user_input.budget * user_input.guests} (for {user_input.guests} guests, {user_input.budget} per person).\n"
+            f"Budget Tier: {budget_tier} — adjust ALL recommendations to match this tier.\n"
             f"Dietary/Extra Requirements: {user_input.extra_req}\n"
-            "Please provide a global culinary guide for this destination."
+            "Please provide a global culinary guide for this destination, "
+            "with venues and dishes that match the budget tier above."
         )
 
         response_data, usage = self.call_llm(system_prompt, user_prompt, json_response=True, max_tokens=5000)
