@@ -1,5 +1,6 @@
 from typing import Any, Dict, Optional
 import logging
+import asyncio
 from dotenv import load_dotenv
 from backend.llm.factory import LLMFactory
 from backend.llm.base import LLMProvider
@@ -17,7 +18,7 @@ class BaseAgent:
     async def run(self, world: "WorldState", bus: "EventBus") -> Any:
         raise NotImplementedError
 
-    def call_llm(
+    async def call_llm(
         self,
         system_prompt: str,
         user_prompt: str,
@@ -28,7 +29,8 @@ class BaseAgent:
     ) -> Any:
         target_model = model or self.model_name
 
-        return self.llm.generate_content(
+        return await asyncio.to_thread(
+            self.llm.generate_content,
             system_prompt=system_prompt,
             user_prompt=user_prompt,
             model=target_model,

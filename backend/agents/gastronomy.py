@@ -7,8 +7,8 @@ class GastronomyAgent(BaseAgent):
         super().__init__(name="GastronomyAgent", llm_provider=llm_provider, model_name=model_name)
 
     async def run(self, world: "WorldState", bus: "EventBus"):
-        self.logger.info("Waiting for itinerary...")
-        await bus.subscribe("days_planned")
+        self.logger.info("Waiting for constraints...")
+        await bus.subscribe("constraints_ready")
         
         if os.environ.get("ENABLE_GASTRONOMY", "true").lower() == "false":
             self.logger.info("Gastronomy Agent disabled by ENABLE_GASTRONOMY flag.")
@@ -19,11 +19,25 @@ class GastronomyAgent(BaseAgent):
 
         async with world.lock:
             user_input = world.user_input
+            constraints = world.constraints or {}
 
         self.logger.info("Finding culinary experiences...")
 
         budget_per_person = user_input.budget
-        num_days = max(1, len(getattr(world, 'days', []) or [1]))
+        try:
+            from datetime import datetime
+            for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M", "%Y-%m-%dT%H:%M", "%Y-%m-%d"):
+                try:
+                    arr = datetime.strptime(user_input.arrival.strip(), fmt)
+                    dep = datetime.strptime(user_input.departure.strip(), fmt)
+                    break
+                except ValueError:
+                    continue
+            else:
+                arr = dep = None
+            num_days = max(1, (dep.date() - arr.date()).days + 1) if arr and dep else 3
+        except Exception:
+            num_days = 3
         daily_budget_pp = budget_per_person / max(num_days, 1)
 
         if daily_budget_pp < 80:
@@ -84,12 +98,13 @@ class GastronomyAgent(BaseAgent):
             f"Destination: {user_input.destination}\n"
             f"Total Trip Budget: {user_input.budget * user_input.guests} (for {user_input.guests} guests, {user_input.budget} per person).\n"
             f"Budget Tier: {budget_tier} — adjust ALL recommendations to match this tier.\n"
-            f"Dietary/Extra Requirements: {user_input.extra_req}\n"
+            f"Dietary restrictions: {', '.join(constraints.get('dietary_restrictions', [])) or 'none'}\n"
+            f"Culinary preferences: {constraints.get('gastronomy_hints', '') or 'no specific preferences'}\n"
             "Please provide a global culinary guide for this destination, "
             "with venues and dishes that match the budget tier above."
         )
 
-        response_data, usage = self.call_llm(system_prompt, user_prompt, json_response=True, max_tokens=5000)
+        response_data, usage = await self.call_llm(system_prompt, user_prompt, json_response=True, max_tokens=5000)
         
         async with world.lock:
              world.token_usage[self.name] = usage

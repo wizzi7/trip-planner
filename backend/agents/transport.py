@@ -7,8 +7,8 @@ class TransportationAgent(BaseAgent):
         super().__init__(name="TransportationAgent", llm_provider=llm_provider, model_name=model_name)
 
     async def run(self, world: "WorldState", bus: "EventBus"):
-        self.logger.info("Waiting for itinerary...")
-        await bus.subscribe("days_planned")
+        self.logger.info("Waiting for constraints...")
+        await bus.subscribe("constraints_ready")
 
         if os.environ.get("ENABLE_TRANSPORT", "true").lower() == "false":
             self.logger.info("Transportation Agent disabled by ENABLE_TRANSPORT flag.")
@@ -19,6 +19,7 @@ class TransportationAgent(BaseAgent):
 
         async with world.lock:
              user_input = world.user_input
+             constraints = world.constraints or {}
 
         self.logger.info("Generating City Mobility Guide...")
 
@@ -49,13 +50,17 @@ class TransportationAgent(BaseAgent):
             "}"
         )
         
+        transport_hints = constraints.get("transport_hints", "")
+        hints_block = f"IMPORTANT user transport preferences: {transport_hints}\n" if transport_hints else ""
+
         user_prompt = (
             f"Destination: {user_input.destination}\n"
             f"Total Trip Budget: {user_input.budget * user_input.guests} (for {user_input.guests} guests, {user_input.budget} per person). CRITICAL: Highlight economical transport options to ensure the trip stays within this strict budget!\n"
+            f"{hints_block}"
             "Please provide the City Mobility Guide."
         )
 
-        response_data, usage = self.call_llm(system_prompt, user_prompt, json_response=True, max_tokens=4000)
+        response_data, usage = await self.call_llm(system_prompt, user_prompt, json_response=True, max_tokens=4000)
         
         async with world.lock:
              world.token_usage[self.name] = usage

@@ -125,7 +125,55 @@ class AttractionsAgent(BaseAgent):
 
         day_availability_block = "\n".join(f"  - {n}" for n in day_notes)
 
-        system_prompt = (
+        system_prompt = self._build_system_prompt()
+
+        total_budget = user_input.budget * user_input.guests
+        attractions_budget = total_budget * 0.30
+        interests = constraints.get("interest_tags", [])
+        pace = constraints.get("pace", "moderate")
+        accessibility = constraints.get("accessibility", "none")
+        attractions_hints = constraints.get("attractions_hints", "")
+
+        constraints_block = (
+            f"Interests: {', '.join(interests) if interests else 'general sightseeing'}\n"
+            f"Pace: {pace}\n"
+            f"Accessibility: {accessibility}\n"
+        )
+        if attractions_hints:
+            constraints_block += f"IMPORTANT user preferences: {attractions_hints}\n"
+
+        user_prompt = (
+            f"Destination: {user_input.destination}\n"
+            f"Arrival: {user_input.arrival}  |  Departure: {user_input.departure}\n"
+            f"Total trip budget: {total_budget} PLN (for {user_input.guests} guests, {user_input.budget} per person).\n"
+            f"CRITICAL BUDGET CONSTRAINT: The TOTAL cost of ALL attractions and entrance fees for the ENTIRE trip MUST NOT exceed {attractions_budget:.0f} PLN. "
+            f"Food and transport are handled separately. Focus on FREE attractions (parks, squares, street art, free museums, walking tours) "
+            f"and only add paid attractions if they fit within the {attractions_budget:.0f} PLN attractions budget.\n"
+            f"{constraints_block}\n"
+            f"Per-day availability (MUST be respected):\n{day_availability_block}\n\n"
+            f"Generate a {num_days}-day itinerary following the above constraints. Return ONLY the JSON array."
+        )
+
+        parsed_days, usage = await self.call_llm(
+            system_prompt,
+            user_prompt,
+            json_response=True,
+            response_schema=TRIP_DAY_SCHEMA,
+        )
+
+        async with world.lock:
+             world.token_usage[self.name] = usage
+
+        trip_days = self._parse_days(parsed_days)
+
+        async with world.lock:
+            world.days = trip_days
+
+        await bus.emit("days_planned")
+        await bus.emit("cost_updated")
+
+    def _build_system_prompt(self):
+        return (
             "You are an expert Travel Agent specializing in creating personalized daily itineraries. "
             "CRITICAL RULE: You MUST respect the available hours constraint for EACH day listed below. "
             "On travel days (arrival or departure), you MUST plan ONLY as many attractions as fit in the available time window. "
@@ -153,25 +201,7 @@ class AttractionsAgent(BaseAgent):
             "Do NOT include any markdown formatting (like ```json), just the raw JSON string."
         )
 
-        user_prompt = (
-            f"Destination: {user_input.destination}\n"
-            f"Arrival: {user_input.arrival}  |  Departure: {user_input.departure}\n"
-            f"Budget: {user_input.budget} per person (Total for {user_input.guests} guests: {user_input.budget * user_input.guests}). CRITICAL: The total trip MUST NOT exceed this budget. Since food and transport will take ~50% of it, prioritize free or affordable attractions!\n"
-            f"Interests/Constraints: {constraints}\n\n"
-            f"Per-day availability (MUST be respected):\n{day_availability_block}\n\n"
-            f"Generate a {num_days}-day itinerary following the above constraints. Return ONLY the JSON array."
-        )
-
-        parsed_days, usage = self.call_llm(
-            system_prompt,
-            user_prompt,
-            json_response=True,
-            response_schema=TRIP_DAY_SCHEMA,
-        )
-
-        async with world.lock:
-             world.token_usage[self.name] = usage
-
+    def _parse_days(self, parsed_days) -> List[TripDay]:
         trip_days = []
         if parsed_days:
             try:
@@ -182,11 +212,7 @@ class AttractionsAgent(BaseAgent):
                  trip_days = self._fallback_response()
         else:
             trip_days = self._fallback_response()
-
-        async with world.lock:
-            world.days = trip_days
-
-        await bus.emit("days_planned")
+        return trip_days
 
     def _fallback_response(self) -> List[TripDay]:
         self.logger.warning("Using fallback response.")

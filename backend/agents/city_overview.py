@@ -38,7 +38,7 @@ class CityOverviewAgent(BaseAgent):
             f"Please generate the City Overview now."
         )
 
-        response_data, usage = self.call_llm(system_prompt, user_prompt, json_response=True)
+        response_data, usage = await self.call_llm(system_prompt, user_prompt, json_response=True)
         
         async with world.lock:
             world.token_usage[self.name] = usage

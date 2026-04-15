@@ -36,6 +36,16 @@ class InMemoryEventBus(EventBus):
         
         await event.wait()
 
+    async def subscribe_with_timeout(self, event_name: str, timeout: float) -> bool:
+        async with self._lock:
+            event = self._get_event(event_name)
+        
+        try:
+            await asyncio.wait_for(event.wait(), timeout=timeout)
+            return True
+        except asyncio.TimeoutError:
+            return False
+
     async def clear(self, event_name: str):
         async with self._lock:
             event = self._get_event(event_name)

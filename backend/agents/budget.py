@@ -1,40 +1,39 @@
 from backend.agents.base import BaseAgent
 import os
 
+BUDGET_EXCEED_THRESHOLD = 0.30
+
 class BudgetAgent(BaseAgent):
     def __init__(self, llm_provider=None, model_name=None):
         super().__init__(name="BudgetAgent", llm_provider=llm_provider, model_name=model_name)
 
     async def run(self, world: "WorldState", bus: "EventBus"):
         self.logger.info("Monitoring budget...")
-        
+
         while True:
             await bus.subscribe("cost_updated")
-            await bus.clear("cost_updated")
-            
-            self.logger.info("Validating budget...")
-            
             async with world.lock:
                 plan_days = [d.model_copy() for d in world.days] if world.days is not None else None
                 user_input = world.user_input
                 culinary_section = world.culinary_section
+                mobility_section = world.mobility_section
 
-            # Wait for plan days to be populated
             if plan_days is None:
-                 self.logger.info("No days yet, waiting...")
-                 continue
+                self.logger.info("No days yet (attractions still running), waiting...")
+                await bus.clear("cost_updated")
+                continue
 
-            # Wait for Transport Agent (Mobility Guide)
-            mobility_section = world.mobility_section
             if mobility_section is None:
-                 self.logger.info("Waiting for mobility guide...")
-                 continue
+                self.logger.info("Waiting for mobility guide...")
+                await bus.clear("cost_updated")
+                continue
 
-            # Wait for Gastronomy Agent
             if culinary_section is None:
-                 self.logger.info("Waiting for culinary agent...")
-                 continue
+                self.logger.info("Waiting for culinary agent...")
+                await bus.clear("cost_updated")
+                continue
             
+
             if os.environ.get("ENABLE_BUDGET", "true").lower() == "false":
                 self.logger.info("Budget Agent disabled by ENABLE_BUDGET flag. Skipping calculation.")
                 async with world.lock:
@@ -60,16 +59,13 @@ class BudgetAgent(BaseAgent):
                 "  2. ACTIVITIES & ATTRACTIONS — entrance fees, tours, tickets based on the itinerary.\n"
                 "  3. LOCAL TRANSPORT — getting around the city based on the mobility info provided.\n"
                 "The daily cost should be the SUM of all three categories above, multiplied by the number of guests.\n"
-                "You must also provide a total estimated cost and a list of budget alerts if the total exceeds the user's budget. "
                 "Return the response in this JSON format:\n"
                 "{\n"
                 "  \"daily_costs\": { \"1\": \"string cost\", \"2\": \"string cost\", ... },\n"
-                "  \"total_estimated_cost\": number,\n"
-                "  \"alerts\": [\"string alert 1\", \"string alert 2\"]\n"
+                "  \"total_estimated_cost\": number\n"
                 "}\n"
                 "CRITICAL: 'total_estimated_cost' MUST be a raw number (integer or float) WITHOUT any currency symbols or text (e.g., 540, not '540 PLN'). "
-                "Daily costs should be formatted strings with currency. Alerts must be in English. "
-                "Example alert: 'Warning: Total cost exceeds budget by 20%'.\n"
+                "Daily costs should be formatted strings with currency. "
                 "CRITICAL: Do NOT underestimate food costs. Use the actual venue price ranges provided to calculate realistic meal expenses."
             )
 
@@ -122,7 +118,7 @@ class BudgetAgent(BaseAgent):
                  "Estimate costs now. Remember to include food, activities, and transport for each day."
             )
 
-            response_data, usage = self.call_llm(system_prompt, user_prompt, json_response=True)
+            response_data, usage = await self.call_llm(system_prompt, user_prompt, json_response=True)
             
             async with world.lock:
                  world.token_usage[self.name] = usage
@@ -131,19 +127,32 @@ class BudgetAgent(BaseAgent):
                  if response_data:
                     try:
                         daily_costs = response_data.get("daily_costs", {})
-                        total_est = response_data.get("total_estimated_cost", 0)
-                        alerts = response_data.get("alerts", [])
+                        total_est = float(response_data.get("total_estimated_cost", 0))
 
                         for day in world.days:
                             day_str = str(day.day)
                             if day_str in daily_costs:
                                 day.estimated_cost = str(daily_costs[day_str])
                         
-                        world.total_cost = float(total_est)
-                        if "alerts" not in world.constraints:
-                             world.constraints["alerts"] = []
-                        world.constraints["alerts"] = alerts
+                        world.total_cost = total_est
+                        total_budget = user_input.budget * user_input.guests
+                        alerts = []
 
+                        if total_budget > 0 and total_est > total_budget:
+                            excess = total_est - total_budget
+                            excess_pct = (excess / total_budget) * 100
+                            alerts.append(
+                                f"Warning: Estimated cost ({total_est:.0f} PLN) exceeds "
+                                f"budget ({total_budget:.0f} PLN) by {excess:.0f} PLN ({excess_pct:.0f}%)."
+                            )
+                        elif total_budget > 0 and total_est <= total_budget:
+                            remaining = total_budget - total_est
+                            alerts.append(
+                                f"Good news: Estimated cost ({total_est:.0f} PLN) is within "
+                                f"budget ({total_budget:.0f} PLN). You have ~{remaining:.0f} PLN remaining."
+                            )
+                        
+                        world.constraints["alerts"] = alerts
                         self.logger.info(f"Cost updated: {world.total_cost}. Alerts: {alerts}")
                         await bus.emit("plan_stable")
                         return
