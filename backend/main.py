@@ -11,6 +11,10 @@ logger = logging.getLogger(__name__)
 app = FastAPI(title="Intelligent Trip Planner API")
 feedback_agent = FeedbackAgent()
 
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy"}
+
 @app.post("/generate_plan", response_model=TripPlan)
 async def generate_plan(user_input: UserInput):
     try:

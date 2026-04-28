@@ -1,6 +1,7 @@
+import os
 import requests
 
-API_URL = "http://localhost:8000"
+API_URL = os.environ.get("API_URL", "http://localhost:8000")
 
 def generate_plan(form_data, llm_settings=None):
     payload = form_data.copy()
