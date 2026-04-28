@@ -2,6 +2,17 @@ from typing import Dict, Any, Tuple
 from backend.models import UserInput, TripPlan
 from backend.agents.base import BaseAgent
 
+FEEDBACK_SCHEMA = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "budget_modifier": {"type": "number"},
+        "pace_override": {"type": "string"},
+        "rerun_agents": {"type": "array", "items": {"type": "string"}},
+    },
+    "required": ["budget_modifier", "pace_override", "rerun_agents"],
+}
+
 class FeedbackAgent(BaseAgent):
     def __init__(self):
         super().__init__(name="FeedbackAgent")
@@ -12,7 +23,7 @@ class FeedbackAgent(BaseAgent):
         system_prompt = (
             "You are a Travel Feedback Analyst. "
             "Decide how to modify UserInput based on feedback. "
-            "Return JSON: { \"budget_modifier\": float (1.0 = same), \"pace_override\": \"string or null\", \"rerun_agents\": [\"list\"] }"
+            "Return JSON: { \"budget_modifier\": float (1.0 = same), \"pace_override\": \"string (empty string if no change)\", \"rerun_agents\": [\"list\"] }"
         )
         
         user_prompt = (
@@ -21,7 +32,7 @@ class FeedbackAgent(BaseAgent):
             f"Feedback: {feedback}\n"
         )
         
-        analysis, usage = await self.call_llm(system_prompt, user_prompt, json_response=True)
+        analysis, usage = await self.call_llm(system_prompt, user_prompt, json_response=True, response_schema=FEEDBACK_SCHEMA)
         updated_input = user_input.model_copy()
         directives = {}
 

@@ -2,6 +2,46 @@ from backend.agents.base import BaseAgent
 from backend.models import CulinarySection
 import os
 
+_DISH_SCHEMA = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "name": {"type": "string"},
+        "description": {"type": "string"},
+        "price_range": {"type": "string"},
+    },
+    "required": ["name", "description", "price_range"],
+}
+
+_VENUE_SCHEMA = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "name": {"type": "string"},
+        "district": {"type": "string"},
+        "type": {"type": "string"},
+        "price_range": {"type": "string"},
+        "signature_items": {"type": "string"},
+    },
+    "required": ["name", "district", "type", "price_range", "signature_items"],
+}
+
+CULINARY_SCHEMA = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "main_dishes": {"type": "array", "items": _DISH_SCHEMA},
+        "soups": {"type": "array", "items": _DISH_SCHEMA},
+        "desserts": {"type": "array", "items": _DISH_SCHEMA},
+        "drinks": {"type": "array", "items": _DISH_SCHEMA},
+        "venues_traditional": {"type": "array", "items": _VENUE_SCHEMA},
+        "venues_cafes": {"type": "array", "items": _VENUE_SCHEMA},
+        "venues_bars": {"type": "array", "items": _VENUE_SCHEMA},
+    },
+    "required": ["main_dishes", "soups", "desserts", "drinks",
+                  "venues_traditional", "venues_cafes", "venues_bars"],
+}
+
 class GastronomyAgent(BaseAgent):
     def __init__(self, llm_provider=None, model_name=None):
         super().__init__(name="GastronomyAgent", llm_provider=llm_provider, model_name=model_name)
@@ -104,7 +144,7 @@ class GastronomyAgent(BaseAgent):
             "with venues and dishes that match the budget tier above."
         )
 
-        response_data, usage = await self.call_llm(system_prompt, user_prompt, json_response=True, max_tokens=5000)
+        response_data, usage = await self.call_llm(system_prompt, user_prompt, json_response=True, max_tokens=5000, response_schema=CULINARY_SCHEMA)
         
         async with world.lock:
              world.token_usage[self.name] = usage
