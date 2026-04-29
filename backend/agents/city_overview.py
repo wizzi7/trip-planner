@@ -2,6 +2,18 @@ from backend.models import CityOverview
 from backend.agents.base import BaseAgent
 import os
 
+CITY_OVERVIEW_SCHEMA = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "city_name": {"type": "string"},
+        "short_description": {"type": "string"},
+        "history_summary": {"type": "string"},
+        "cultural_identity": {"type": "string"},
+    },
+    "required": ["city_name", "short_description", "history_summary", "cultural_identity"],
+}
+
 class CityOverviewAgent(BaseAgent):
     def __init__(self, llm_provider=None, model_name=None):
         super().__init__(name="CityOverviewAgent", llm_provider=llm_provider, model_name=model_name)
@@ -38,7 +50,7 @@ class CityOverviewAgent(BaseAgent):
             f"Please generate the City Overview now."
         )
 
-        response_data, usage = await self.call_llm(system_prompt, user_prompt, json_response=True)
+        response_data, usage = await self.call_llm(system_prompt, user_prompt, json_response=True, response_schema=CITY_OVERVIEW_SCHEMA)
         
         async with world.lock:
             world.token_usage[self.name] = usage

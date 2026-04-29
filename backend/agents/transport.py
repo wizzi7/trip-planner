@@ -2,6 +2,96 @@ from backend.agents.base import BaseAgent
 from backend.models import MobilitySection
 import os
 
+MOBILITY_SCHEMA = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "public_transport": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "available_options": {"type": "array", "items": {"type": "string"}},
+                "ticket_types": {"type": "string"},
+                "approximate_prices": {"type": "string"},
+                "coverage_quality": {"type": "string"},
+                "useful_apps": {"type": "array", "items": {"type": "string"}},
+                "best_use_cases": {"type": "string"},
+                "price_level": {"type": "string"},
+                "website_url": {"type": "string"},
+            },
+            "required": ["available_options", "ticket_types", "approximate_prices",
+                         "coverage_quality", "useful_apps", "best_use_cases",
+                         "price_level", "website_url"],
+        },
+        "taxis": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "available_apps": {"type": "array", "items": {"type": "string"}},
+                "typical_pricing_level": {"type": "string"},
+                "safety_notes": {"type": "string"},
+                "when_to_use": {"type": "string"},
+            },
+            "required": ["available_apps", "typical_pricing_level", "safety_notes", "when_to_use"],
+        },
+        "walking": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "is_walkable": {"type": "boolean"},
+                "best_areas": {"type": "array", "items": {"type": "string"}},
+            },
+            "required": ["is_walkable", "best_areas"],
+        },
+        "bikes": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "available": {"type": "boolean"},
+                "providers": {"type": "array", "items": {"type": "string"}},
+                "price_range": {"type": "string"},
+                "convenience": {"type": "string"},
+                "cautions": {"type": "array", "items": {"type": "string"}},
+            },
+            "required": ["available", "providers", "price_range", "convenience", "cautions"],
+        },
+        "ferries": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "is_relevant": {"type": "boolean"},
+                "routes": {"type": "string"},
+                "cost_level": {"type": "string"},
+                "tourist_vs_commuter": {"type": "string"},
+            },
+            "required": ["is_relevant", "routes", "cost_level", "tourist_vs_commuter"],
+        },
+        "car_rental": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "recommended": {"type": "boolean"},
+                "parking_difficulty": {"type": "string"},
+                "notes": {"type": "string"},
+            },
+            "required": ["recommended", "parking_difficulty", "notes"],
+        },
+        "quick_recommendations": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "best_overall": {"type": "string"},
+                "cheapest": {"type": "string"},
+                "most_convenient": {"type": "string"},
+                "avoid": {"type": "array", "items": {"type": "string"}},
+            },
+            "required": ["best_overall", "cheapest", "most_convenient", "avoid"],
+        },
+    },
+    "required": ["public_transport", "taxis", "walking", "bikes", "ferries",
+                  "car_rental", "quick_recommendations"],
+}
+
 class TransportationAgent(BaseAgent):
     def __init__(self, llm_provider=None, model_name=None):
         super().__init__(name="TransportationAgent", llm_provider=llm_provider, model_name=model_name)
@@ -60,7 +150,7 @@ class TransportationAgent(BaseAgent):
             "Please provide the City Mobility Guide."
         )
 
-        response_data, usage = await self.call_llm(system_prompt, user_prompt, json_response=True, max_tokens=4000)
+        response_data, usage = await self.call_llm(system_prompt, user_prompt, json_response=True, max_tokens=4000, response_schema=MOBILITY_SCHEMA)
         
         async with world.lock:
              world.token_usage[self.name] = usage

@@ -3,6 +3,27 @@ import os
 
 BUDGET_EXCEED_THRESHOLD = 0.30
 
+BUDGET_SCHEMA = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "daily_costs": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "day": {"type": "integer"},
+                    "cost": {"type": "string"},
+                },
+                "required": ["day", "cost"],
+            },
+        },
+        "total_estimated_cost": {"type": "number"},
+    },
+    "required": ["daily_costs", "total_estimated_cost"],
+}
+
 class BudgetAgent(BaseAgent):
     def __init__(self, llm_provider=None, model_name=None):
         super().__init__(name="BudgetAgent", llm_provider=llm_provider, model_name=model_name)
@@ -61,7 +82,7 @@ class BudgetAgent(BaseAgent):
                 "The daily cost should be the SUM of all three categories above, multiplied by the number of guests.\n"
                 "Return the response in this JSON format:\n"
                 "{\n"
-                "  \"daily_costs\": { \"1\": \"string cost\", \"2\": \"string cost\", ... },\n"
+                "  \"daily_costs\": [{\"day\": 1, \"cost\": \"250 PLN\"}, {\"day\": 2, \"cost\": \"310 PLN\"}, ...],\n"
                 "  \"total_estimated_cost\": number\n"
                 "}\n"
                 "CRITICAL: 'total_estimated_cost' MUST be a raw number (integer or float) WITHOUT any currency symbols or text (e.g., 540, not '540 PLN'). "
@@ -118,7 +139,7 @@ class BudgetAgent(BaseAgent):
                  "Estimate costs now. Remember to include food, activities, and transport for each day."
             )
 
-            response_data, usage = await self.call_llm(system_prompt, user_prompt, json_response=True)
+            response_data, usage = await self.call_llm(system_prompt, user_prompt, json_response=True, response_schema=BUDGET_SCHEMA)
             
             async with world.lock:
                  world.token_usage[self.name] = usage
@@ -126,13 +147,13 @@ class BudgetAgent(BaseAgent):
             async with world.lock:
                  if response_data:
                     try:
-                        daily_costs = response_data.get("daily_costs", {})
+                        daily_costs = response_data.get("daily_costs", [])
                         total_est = float(response_data.get("total_estimated_cost", 0))
 
+                        cost_by_day = {item["day"]: item["cost"] for item in daily_costs if isinstance(item, dict)}
                         for day in world.days:
-                            day_str = str(day.day)
-                            if day_str in daily_costs:
-                                day.estimated_cost = str(daily_costs[day_str])
+                            if day.day in cost_by_day:
+                                day.estimated_cost = str(cost_by_day[day.day])
                         
                         world.total_cost = total_est
                         total_budget = user_input.budget * user_input.guests

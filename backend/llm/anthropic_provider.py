@@ -122,33 +122,8 @@ class AnthropicProvider(LLMProvider):
             }
 
             if json_response:
-                import re
                 try:
-                    json_match = re.search(r"```json\s*(.*?)\s*```", content, re.DOTALL)
-                    if json_match:
-                        cleaned_content = json_match.group(1)
-                    else:
-                        first_brace = content.find('{')
-                        last_brace = content.rfind('}')
-                        first_bracket = content.find('[')
-                        last_bracket = content.rfind(']')
-
-                        has_obj = first_brace != -1 and last_brace != -1
-                        has_arr = first_bracket != -1 and last_bracket != -1
-
-                        if has_obj and has_arr:
-                            if first_brace < first_bracket:
-                                cleaned_content = content[first_brace:last_brace+1]
-                            else:
-                                cleaned_content = content[first_bracket:last_bracket+1]
-                        elif has_obj:
-                            cleaned_content = content[first_brace:last_brace+1]
-                        elif has_arr:
-                            cleaned_content = content[first_bracket:last_bracket+1]
-                        else:
-                            cleaned_content = content.strip()
-
-                    return json.loads(cleaned_content), usage_stats
+                    return json.loads(content), usage_stats
                 except (json.JSONDecodeError, ValueError):
                     self.logger.error(f"Failed to parse JSON: {content}")
                     return None, usage_stats
