@@ -5,7 +5,7 @@ import os
 st.set_page_config(
     page_title="Intelligent Trip Planner",
     page_icon="🌍",
-    layout="centered"
+    layout="wide"
 )
 
 def local_css(file_name):

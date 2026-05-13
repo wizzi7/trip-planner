@@ -47,7 +47,7 @@ def render_mobility_section(plan):
                 st.markdown("### 🚶 Walking")
                 st.markdown(f"""
                 **Walkable?**: {'✅ Yes' if walk.get('is_walkable') else '❌ No'}  
-                **Best Areas**: {walk.get('best_areas', '')}
+                **Best Areas**: {format_mobility_field(walk.get('best_areas', ''))}
                 """)
 
         with col2:
@@ -66,7 +66,7 @@ def render_mobility_section(plan):
                 st.markdown(f"""
                 **Providers**: {', '.join(bikes.get('providers', []))}  
                 **Convenience**: {bikes.get('convenience', '')}  
-                **Note**: {bikes.get('cautions', '')}
+                **Note**: {format_mobility_field(bikes.get('cautions', ''))}
                 """)
 
         ferry = mobility.get('ferries')
