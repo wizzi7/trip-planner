@@ -30,7 +30,7 @@ def main():
 
     with st.sidebar:
         with st.expander("⚙️ AI Settings", expanded=False):
-            model_options = ["gemini-3.1-pro-preview", "gpt-5.4", "claude-sonnet-4-6"]
+            model_options = ["gemini-3.5-flash", "gpt-5.4", "claude-sonnet-4-6"]
             model_name = st.selectbox(
                 "Model", 
                 model_options,

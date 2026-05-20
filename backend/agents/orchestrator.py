@@ -18,7 +18,7 @@ class OrchestratorAgent(BaseAgent):
     async def run(self, user_input: UserInput) -> TripPlan:
         self.logger.info(f"Starting MAS planning for {user_input.destination}")
 
-        model_name = "gemini-3.1-pro-preview"
+        model_name = "gemini-3.5-flash"
         if user_input.llm_settings and user_input.llm_settings.model:
              model_name = user_input.llm_settings.model
 

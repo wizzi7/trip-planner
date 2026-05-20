@@ -85,7 +85,7 @@ class OpenAIProvider(LLMProvider):
                 "gpt-4o-2024-05-13": {"input": 5.0, "output": 15.0},
                 "gpt-3.5-turbo": {"input": 0.5, "output": 1.5},
                 "gpt-4o-mini": {"input": 0.15, "output": 0.60},
-                "gpt-5.4": {"input": 0.15, "output": 0.60},
+                "gpt-5.4": {"input": 2.50, "output": 15.00},
                 "unknown": {"input": 0, "output": 0}
             }
 
