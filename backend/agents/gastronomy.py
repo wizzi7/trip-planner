@@ -80,7 +80,7 @@ class GastronomyAgent(BaseAgent):
             num_days = 3
         daily_budget_pp = budget_per_person / max(num_days, 1)
 
-        if daily_budget_pp < 80:
+        if daily_budget_pp < 250:
             budget_tier = "LOW"
             tier_guidance = (
                 "The traveler is on a TIGHT BUDGET. "
@@ -90,7 +90,7 @@ class GastronomyAgent(BaseAgent):
                 "All recommended venues should be in the budget-friendly segment where a full meal costs well under 40 PLN per person. "
                 "Prioritize value-for-money and large portions at low prices."
             )
-        elif daily_budget_pp < 200:
+        elif daily_budget_pp < 500:
             budget_tier = "MEDIUM"
             tier_guidance = (
                 "The traveler has a MODERATE BUDGET. "
