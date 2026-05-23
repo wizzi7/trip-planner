@@ -1,6 +1,7 @@
 from typing import Any, Dict, Optional
 import logging
 import asyncio
+import time
 from dotenv import load_dotenv
 from backend.llm.factory import LLMFactory
 from backend.llm.base import LLMProvider
@@ -29,7 +30,8 @@ class BaseAgent:
     ) -> Any:
         target_model = model or self.model_name
 
-        return await asyncio.to_thread(
+        start_time = time.time()
+        result = await asyncio.to_thread(
             self.llm.generate_content,
             system_prompt=system_prompt,
             user_prompt=user_prompt,
@@ -38,3 +40,10 @@ class BaseAgent:
             max_tokens=max_tokens,
             response_schema=response_schema,
         )
+        elapsed = round(time.time() - start_time, 3)
+
+        if isinstance(result, tuple) and len(result) == 2 and isinstance(result[1], dict):
+            result[1]["latency_seconds"] = elapsed
+            self.logger.info(f"LLM call completed in {elapsed}s")
+
+        return result
