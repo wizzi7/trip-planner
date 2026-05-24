@@ -1,0 +1,81 @@
+name: Deploy to GCP
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  PROJECT_ID: trip-planner-prd
+  REGION: europe-central2
+  REPO: europe-central2-docker.pkg.dev/trip-planner-prd/trip-planner
+  BACKEND_SERVICE: trip-planner-backend
+  FRONTEND_SERVICE: trip-planner-frontend
+
+jobs:
+  test-and-deploy:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run tests (pytest)
+        run: |
+          pytest tests/
+
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker Auth
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - name: Build and Push Backend
+        run: |
+          IMAGE="${{ env.REPO }}/backend:${{ github.sha }}"
+          docker build -t $IMAGE -f backend/Dockerfile .
+          docker push $IMAGE
+
+      - name: Build and Push Frontend
+        run: |
+          IMAGE="${{ env.REPO }}/frontend:${{ github.sha }}"
+          docker build -t $IMAGE -f frontend/Dockerfile .
+          docker push $IMAGE
+
+      - name: Deploy Backend to Cloud Run
+        run: |
+          gcloud run deploy ${{ env.BACKEND_SERVICE }} \
+            --image ${{ env.REPO }}/backend:${{ github.sha }} \
+            --region ${{ env.REGION }} \
+            --project ${{ env.PROJECT_ID }} \
+            --quiet
+
+      - name: Deploy Frontend to Cloud Run
+        run: |
+          gcloud run deploy ${{ env.FRONTEND_SERVICE }} \
+            --image ${{ env.REPO }}/frontend:${{ github.sha }} \
+            --region ${{ env.REGION }} \
+            --project ${{ env.PROJECT_ID }} \
+            --quiet

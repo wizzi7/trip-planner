@@ -2,20 +2,17 @@ locals {
   repo = "${var.region}-docker.pkg.dev/${var.project_id}/trip-planner"
 }
 
-# ── Włączenie wymaganych API ──────────────────────────────────────────────────
-
 resource "google_project_service" "apis" {
   for_each = toset([
     "run.googleapis.com",
     "artifactregistry.googleapis.com",
     "secretmanager.googleapis.com",
     "compute.googleapis.com",
+    "iamcredentials.googleapis.com",
   ])
   service            = each.key
   disable_on_destroy = false
 }
-
-# ── Sieć (VPC) i NAT ──────────────────────────────────────────────────────────
 
 resource "google_compute_network" "vpc" {
   name                    = "trip-planner-vpc"
@@ -45,8 +42,6 @@ resource "google_compute_router_nat" "nat" {
   source_subnetwork_ip_ranges_to_nat = "ALL_SUBNETWORKS_ALL_IP_RANGES"
 }
 
-# ── Artifact Registry ─────────────────────────────────────────────────────────
-
 resource "google_artifact_registry_repository" "trip_planner" {
   repository_id = "trip-planner"
   format        = "DOCKER"
@@ -55,8 +50,6 @@ resource "google_artifact_registry_repository" "trip_planner" {
 
   depends_on = [google_project_service.apis]
 }
-
-# ── Secret Manager ────────────────────────────────────────────────────────────
 
 resource "google_secret_manager_secret" "google_api_key" {
   secret_id = "google-api-key"
@@ -97,8 +90,6 @@ resource "google_secret_manager_secret_version" "anthropic_api_key" {
   secret_data = var.anthropic_api_key
 }
 
-# ── Service Accounts ──────────────────────────────────────────────────────────
-
 resource "google_service_account" "backend_sa" {
   account_id   = "backend-sa"
   display_name = "Backend Service Account"
@@ -115,8 +106,6 @@ resource "google_project_iam_member" "secret_accessor" {
   member  = "serviceAccount:${google_service_account.backend_sa.email}"
 }
 
-# ── Cloud Run: Backend ────────────────────────────────────────────────────────
-
 resource "google_cloud_run_v2_service" "backend" {
   name     = "trip-planner-backend"
   location = var.region
@@ -126,7 +115,7 @@ resource "google_cloud_run_v2_service" "backend" {
     service_account = google_service_account.backend_sa.email
 
     scaling {
-      min_instance_count = 0 # scale-to-zero w okresach bezczynności
+      min_instance_count = 0 # scale-to-zero when unused
       max_instance_count = 3
     }
 
@@ -148,7 +137,6 @@ resource "google_cloud_run_v2_service" "backend" {
         }
       }
 
-      # Sekrety wstrzykiwane jako zmienne środowiskowe
       dynamic "env" {
         for_each = {
           GOOGLE_API_KEY    = google_secret_manager_secret.google_api_key.secret_id
@@ -168,6 +156,12 @@ resource "google_cloud_run_v2_service" "backend" {
     }
   }
 
+  lifecycle {
+    ignore_changes = [
+      template[0].containers[0].image
+    ]
+  }
+
   depends_on = [
     google_project_iam_member.secret_accessor,
     google_artifact_registry_repository.trip_planner,
@@ -181,8 +175,6 @@ resource "google_cloud_run_v2_service_iam_member" "backend_public" {
   role     = "roles/run.invoker"
   member   = "allUsers"
 }
-
-# ── Cloud Run: Frontend ───────────────────────────────────────────────────────
 
 resource "google_cloud_run_v2_service" "frontend" {
   name     = "trip-planner-frontend"
@@ -200,7 +192,7 @@ resource "google_cloud_run_v2_service" "frontend" {
     }
 
     scaling {
-      min_instance_count = 1 # always-on — Streamlit przechowuje session_state w pamięci
+      min_instance_count = 1 # always-on
       max_instance_count = 2
     }
 
@@ -223,6 +215,12 @@ resource "google_cloud_run_v2_service" "frontend" {
         value = google_cloud_run_v2_service.backend.uri
       }
     }
+  }
+
+  lifecycle {
+    ignore_changes = [
+      template[0].containers[0].image
+    ]
   }
 
   depends_on = [
