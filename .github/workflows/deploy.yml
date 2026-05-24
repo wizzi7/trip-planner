@@ -142,9 +142,12 @@ jobs:
           docker tag frontend-image ${{ env.REPO }}/frontend:${{ github.sha }}
           docker push ${{ env.REPO }}/frontend:${{ github.sha }}
 
-  deploy:
-    name: Deploy
+  deploy-backend:
+    name: Deploy Backend
     needs: [changes, push]
+    if: needs.changes.outputs.backend == 'true'
+    environment:
+      name: deploy-backend
     runs-on: ubuntu-latest
     permissions:
       contents: 'read'
@@ -157,7 +160,6 @@ jobs:
           service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
 
       - name: Deploy Backend
-        if: needs.changes.outputs.backend == 'true'
         run: |
           gcloud run deploy ${{ env.BACKEND_SERVICE }} \
             --image ${{ env.REPO }}/backend:${{ github.sha }} \
@@ -165,8 +167,24 @@ jobs:
             --project ${{ env.PROJECT_ID }} \
             --quiet
 
+  deploy-frontend:
+    name: Deploy Frontend
+    needs: [changes, push]
+    if: needs.changes.outputs.frontend == 'true'
+    environment:
+      name: deploy-frontend
+    runs-on: ubuntu-latest
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+
       - name: Deploy Frontend
-        if: needs.changes.outputs.frontend == 'true'
         run: |
           gcloud run deploy ${{ env.FRONTEND_SERVICE }} \
             --image ${{ env.REPO }}/frontend:${{ github.sha }} \
