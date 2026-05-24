@@ -21,7 +21,7 @@ class GeminiProvider(LLMProvider):
         self,
         system_prompt: str,
         user_prompt: str,
-        model: str = "gemini-3.1-pro-preview",
+        model: str = "gemini-3.5-flash",
         json_response: bool = True,
         max_tokens: int = None,
         temperature: float = 0.7,
@@ -67,7 +67,7 @@ class GeminiProvider(LLMProvider):
                 output_tokens = usage.candidates_token_count if usage else 0
                 total_tokens = usage.total_token_count if usage else 0
 
-                pricing = MODEL_PRICING.get(model, MODEL_PRICING.get("gemini-3.1-pro-preview", {"input": 0, "output": 0}))
+                pricing = MODEL_PRICING.get(model, MODEL_PRICING.get("gemini-3.5-flash", {"input": 0, "output": 0}))
                 cost = (input_tokens / 1_000_000 * pricing["input"]) + (output_tokens / 1_000_000 * pricing["output"])
 
                 usage_stats = {

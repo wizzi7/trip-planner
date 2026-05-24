@@ -17,8 +17,13 @@ def render_results(plan):
     if plan.get('city_overview'):
         render_city_header(plan['city_overview'])
 
-    for day in plan['days']:
-        render_daily_activities(day)
+    for i in range(0, len(plan['days']), 2):
+        cols = st.columns(2)
+        with cols[0]:
+            render_daily_activities(plan['days'][i])
+        if i + 1 < len(plan['days']):
+            with cols[1]:
+                render_daily_activities(plan['days'][i + 1])
 
     render_culinary_section(plan)
     render_mobility_section(plan)

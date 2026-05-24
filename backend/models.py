@@ -3,7 +3,7 @@ from typing import List, Optional, Dict, Any
 
 class LLMSettings(BaseModel):
     provider: str = "gemini"
-    model: str = "gemini-3.1-pro-preview"
+    model: str = "gemini-3.5-flash"
     temperature: float = 0.7
     max_tokens: int = 2000
 

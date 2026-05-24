@@ -67,5 +67,7 @@ h1, h2, h3 {
 }
 
 .block-container {
-    max-width: 900px !important;
+    max-width: 1400px !important;
+    padding-left: 2rem !important;
+    padding-right: 2rem !important;
 }

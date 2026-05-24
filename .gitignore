@@ -1,2 +1,7 @@
 .idea/
 .env
+.terraform.lock.hcl
+terraform.tfvars
+terraform.tfstate
+.terraform/
+benchmark/results/
