@@ -1,9 +1,12 @@
-name: Deploy to GCP
+name: CI/CD Pipeline
 
 on:
   push:
     branches:
       - main
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
 
 env:
   PROJECT_ID: trip-planner-prd
@@ -13,7 +16,8 @@ env:
   FRONTEND_SERVICE: trip-planner-frontend
 
 jobs:
-  test-and-deploy:
+  pipeline:
+    name: Build & Deploy
     runs-on: ubuntu-latest
 
     permissions:
@@ -24,21 +28,38 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Check path changes
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+              - 'tests/**'
+              - 'requirements.txt'
+            frontend:
+              - 'frontend/**'
+
+      # ========================================================
+      # STEP 1: TESTS
+      # ========================================================
+      - name: Set up Python for Tests
+        if: steps.filter.outputs.backend == 'true'
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           cache: 'pip'
 
-      - name: Install dependencies
+      - name: Install dependencies & Run Tests
+        if: steps.filter.outputs.backend == 'true'
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-
-      - name: Run tests (pytest)
-        run: |
           pytest tests/
 
+      # ========================================================
+      # AUTHENTICATE TO GCP
+      # ========================================================
       - name: Authenticate to Google Cloud
         id: auth
         uses: google-github-actions/auth@v2
@@ -46,25 +67,36 @@ jobs:
           workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
 
-      - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
-
       - name: Configure Docker Auth
         run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
 
-      - name: Build and Push Backend
-        run: |
-          IMAGE="${{ env.REPO }}/backend:${{ github.sha }}"
-          docker build -t $IMAGE -f backend/Dockerfile .
-          docker push $IMAGE
+      # ========================================================
+      # STEP 2: BUILD IMAGES
+      # ========================================================
+      - name: Build Backend Image
+        if: steps.filter.outputs.backend == 'true'
+        run: docker build -t ${{ env.REPO }}/backend:${{ github.sha }} -f backend/Dockerfile .
 
-      - name: Build and Push Frontend
-        run: |
-          IMAGE="${{ env.REPO }}/frontend:${{ github.sha }}"
-          docker build -t $IMAGE -f frontend/Dockerfile .
-          docker push $IMAGE
+      - name: Build Frontend Image
+        if: steps.filter.outputs.frontend == 'true'
+        run: docker build -t ${{ env.REPO }}/frontend:${{ github.sha }} -f frontend/Dockerfile .
 
-      - name: Deploy Backend to Cloud Run
+      # ========================================================
+      # STEP 3: PUSH IMAGES TO REPO
+      # ========================================================
+      - name: Push Backend Image
+        if: steps.filter.outputs.backend == 'true'
+        run: docker push ${{ env.REPO }}/backend:${{ github.sha }}
+
+      - name: Push Frontend Image
+        if: steps.filter.outputs.frontend == 'true'
+        run: docker push ${{ env.REPO }}/frontend:${{ github.sha }}
+
+      # ========================================================
+      # STEP 4: DEPLOY TO CLOUD RUN
+      # ========================================================
+      - name: Deploy Backend
+        if: steps.filter.outputs.backend == 'true'
         run: |
           gcloud run deploy ${{ env.BACKEND_SERVICE }} \
             --image ${{ env.REPO }}/backend:${{ github.sha }} \
@@ -72,7 +104,8 @@ jobs:
             --project ${{ env.PROJECT_ID }} \
             --quiet
 
-      - name: Deploy Frontend to Cloud Run
+      - name: Deploy Frontend
+        if: steps.filter.outputs.frontend == 'true'
         run: |
           gcloud run deploy ${{ env.FRONTEND_SERVICE }} \
             --image ${{ env.REPO }}/frontend:${{ github.sha }} \

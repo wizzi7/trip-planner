@@ -21,10 +21,10 @@ class TestModelPricing:
             assert isinstance(prices["output"], (int, float)), f"{model} output is not numeric"
 
     def test_known_gemini_model_exists(self):
-        assert "gemini-3.1-pro-preview" in MODEL_PRICING
+        assert "gemini-3.5-flash" in MODEL_PRICING
 
     def test_known_openai_model_exists(self):
-        assert "gpt-4o" in MODEL_PRICING
+        assert "gpt-5.4" in MODEL_PRICING
 
     def test_known_anthropic_model_exists(self):
         assert "claude-sonnet-4-6" in MODEL_PRICING
