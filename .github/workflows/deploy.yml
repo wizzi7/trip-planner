@@ -7,6 +7,8 @@ on:
     paths:
       - 'backend/**'
       - 'frontend/**'
+      - 'tests/**'
+      - 'requirements.txt'
 
 env:
   PROJECT_ID: trip-planner-prd
@@ -16,21 +18,16 @@ env:
   FRONTEND_SERVICE: trip-planner-frontend
 
 jobs:
-  pipeline:
-    name: Build & Deploy
+  changes:
+    name: Check Changes
     runs-on: ubuntu-latest
-
-    permissions:
-      contents: 'read'
-      id-token: 'write'
-
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Check path changes
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
         id: filter
-        uses: dorny/paths-filter@v3
         with:
           filters: |
             backend:
@@ -40,28 +37,91 @@ jobs:
             frontend:
               - 'frontend/**'
 
-      # ========================================================
-      # STEP 1: TESTS
-      # ========================================================
-      - name: Set up Python for Tests
-        if: steps.filter.outputs.backend == 'true'
+  tests:
+    name: Tests
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           cache: 'pip'
-
-      - name: Install dependencies & Run Tests
-        if: steps.filter.outputs.backend == 'true'
+      - name: Install dependencies & Run
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pytest tests/
 
-      # ========================================================
-      # AUTHENTICATE TO GCP
-      # ========================================================
+  build:
+    name: Build Images
+    needs: [changes, tests]
+    if: |
+      always() && 
+      (needs.tests.result == 'success' || needs.tests.result == 'skipped') &&
+      (needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Build Backend Image
+        if: needs.changes.outputs.backend == 'true'
+        run: |
+          docker build -t backend-image -f backend/Dockerfile .
+          docker save backend-image > backend.tar
+
+      - name: Build Frontend Image
+        if: needs.changes.outputs.frontend == 'true'
+        run: |
+          docker build -t frontend-image -f frontend/Dockerfile .
+          docker save frontend-image > frontend.tar
+
+      - name: Upload Backend Artifact
+        if: needs.changes.outputs.backend == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-image
+          path: backend.tar
+          retention-days: 1
+
+      - name: Upload Frontend Artifact
+        if: needs.changes.outputs.frontend == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-image
+          path: frontend.tar
+          retention-days: 1
+
+  push:
+    name: Push Images
+    needs: [changes, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    steps:
+      - name: Download Backend Artifact
+        if: needs.changes.outputs.backend == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-image
+          path: .
+
+      - name: Download Frontend Artifact
+        if: needs.changes.outputs.frontend == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-image
+          path: .
+
+      - name: Load Images
+        run: |
+          if [ -f backend.tar ]; then docker load < backend.tar; fi
+          if [ -f frontend.tar ]; then docker load < frontend.tar; fi
+
       - name: Authenticate to Google Cloud
-        id: auth
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
@@ -70,33 +130,34 @@ jobs:
       - name: Configure Docker Auth
         run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
 
-      # ========================================================
-      # STEP 2: BUILD IMAGES
-      # ========================================================
-      - name: Build Backend Image
-        if: steps.filter.outputs.backend == 'true'
-        run: docker build -t ${{ env.REPO }}/backend:${{ github.sha }} -f backend/Dockerfile .
+      - name: Tag and Push Backend
+        if: needs.changes.outputs.backend == 'true'
+        run: |
+          docker tag backend-image ${{ env.REPO }}/backend:${{ github.sha }}
+          docker push ${{ env.REPO }}/backend:${{ github.sha }}
 
-      - name: Build Frontend Image
-        if: steps.filter.outputs.frontend == 'true'
-        run: docker build -t ${{ env.REPO }}/frontend:${{ github.sha }} -f frontend/Dockerfile .
+      - name: Tag and Push Frontend
+        if: needs.changes.outputs.frontend == 'true'
+        run: |
+          docker tag frontend-image ${{ env.REPO }}/frontend:${{ github.sha }}
+          docker push ${{ env.REPO }}/frontend:${{ github.sha }}
 
-      # ========================================================
-      # STEP 3: PUSH IMAGES TO REPO
-      # ========================================================
-      - name: Push Backend Image
-        if: steps.filter.outputs.backend == 'true'
-        run: docker push ${{ env.REPO }}/backend:${{ github.sha }}
+  deploy:
+    name: Deploy
+    needs: [changes, push]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
 
-      - name: Push Frontend Image
-        if: steps.filter.outputs.frontend == 'true'
-        run: docker push ${{ env.REPO }}/frontend:${{ github.sha }}
-
-      # ========================================================
-      # STEP 4: DEPLOY TO CLOUD RUN
-      # ========================================================
       - name: Deploy Backend
-        if: steps.filter.outputs.backend == 'true'
+        if: needs.changes.outputs.backend == 'true'
         run: |
           gcloud run deploy ${{ env.BACKEND_SERVICE }} \
             --image ${{ env.REPO }}/backend:${{ github.sha }} \
@@ -105,7 +166,7 @@ jobs:
             --quiet
 
       - name: Deploy Frontend
-        if: steps.filter.outputs.frontend == 'true'
+        if: needs.changes.outputs.frontend == 'true'
         run: |
           gcloud run deploy ${{ env.FRONTEND_SERVICE }} \
             --image ${{ env.REPO }}/frontend:${{ github.sha }} \
