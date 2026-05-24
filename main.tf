@@ -1,46 +1,3 @@
-terraform {
-  backend "gcs" {
-    bucket = "trip-planner-tfstate"
-    prefix = "terraform/state"
-  }
-
-  required_providers {
-    google = {
-      source  = "hashicorp/google"
-      version = "~> 5.0"
-    }
-  }
-}
-
-provider "google" {
-  project = var.project_id
-  region  = var.region
-}
-
-# ── Zmienne ───────────────────────────────────────────────────────────────────
-
-variable "project_id" {
-  default = "trip-planner-prd"
-}
-
-variable "region" {
-  default = "europe-central2"
-}
-
-variable "google_api_key" {
-  sensitive = true
-}
-
-variable "openai_api_key" {
-  sensitive = true
-}
-
-variable "anthropic_api_key" {
-  sensitive = true
-}
-
-# ── Lokalny skrót do ścieżki repozytorium ────────────────────────────────────
-
 locals {
   repo = "${var.region}-docker.pkg.dev/${var.project_id}/trip-planner"
 }
@@ -280,14 +237,4 @@ resource "google_cloud_run_v2_service_iam_member" "frontend_public" {
   name     = google_cloud_run_v2_service.frontend.name
   role     = "roles/run.invoker"
   member   = "allUsers"
-}
-
-# ── Outputy ───────────────────────────────────────────────────────────────────
-
-output "backend_url" {
-  value = google_cloud_run_v2_service.backend.uri
-}
-
-output "frontend_url" {
-  value = google_cloud_run_v2_service.frontend.uri
 }
