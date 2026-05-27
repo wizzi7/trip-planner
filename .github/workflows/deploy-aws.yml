@@ -1,0 +1,234 @@
+name: AWS CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - 'tests/**'
+      - 'requirements.txt'
+
+env:
+  AWS_REGION: eu-central-1
+  BACKEND_SERVICE: trip-planner-backend
+  FRONTEND_SERVICE: trip-planner-frontend
+
+jobs:
+  changes:
+    name: Check Changes
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+              - 'tests/**'
+              - 'requirements.txt'
+            frontend:
+              - 'frontend/**'
+
+  tests:
+    name: Tests
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      - name: Install dependencies & Run
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pytest tests/
+
+  build:
+    name: Build Images
+    needs: [changes, tests]
+    if: |
+      always() && 
+      (needs.tests.result == 'success' || needs.tests.result == 'skipped') &&
+      (needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Build Backend Image
+        if: needs.changes.outputs.backend == 'true'
+        run: |
+          docker build -t backend-image -f backend/Dockerfile .
+          docker save backend-image > backend.tar
+
+      - name: Build Frontend Image
+        if: needs.changes.outputs.frontend == 'true'
+        run: |
+          docker build -t frontend-image -f frontend/Dockerfile .
+          docker save frontend-image > frontend.tar
+
+      - name: Upload Backend Artifact
+        if: needs.changes.outputs.backend == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-image
+          path: backend.tar
+          retention-days: 1
+
+      - name: Upload Frontend Artifact
+        if: needs.changes.outputs.frontend == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-image
+          path: frontend.tar
+          retention-days: 1
+
+  push:
+    name: Push Images
+    needs: [changes, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    steps:
+      - name: Download Backend Artifact
+        if: needs.changes.outputs.backend == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-image
+          path: .
+
+      - name: Download Frontend Artifact
+        if: needs.changes.outputs.frontend == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-image
+          path: .
+
+      - name: Load Images
+        run: |
+          if [ -f backend.tar ]; then docker load < backend.tar; fi
+          if [ -f frontend.tar ]; then docker load < frontend.tar; fi
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Tag and Push Backend
+        if: needs.changes.outputs.backend == 'true'
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          docker tag backend-image $ECR_REGISTRY/${{ env.BACKEND_SERVICE }}:${{ github.sha }}
+          docker push $ECR_REGISTRY/${{ env.BACKEND_SERVICE }}:${{ github.sha }}
+
+      - name: Tag and Push Frontend
+        if: needs.changes.outputs.frontend == 'true'
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          docker tag frontend-image $ECR_REGISTRY/${{ env.FRONTEND_SERVICE }}:${{ github.sha }}
+          docker push $ECR_REGISTRY/${{ env.FRONTEND_SERVICE }}:${{ github.sha }}
+
+  deploy-backend:
+    name: Deploy Backend
+    needs: [changes, push]
+    if: needs.changes.outputs.backend == 'true'
+    environment:
+      name: deploy-aws-backend
+    runs-on: ubuntu-latest
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Deploy Backend to App Runner
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          # Zaktualizuj obraz w App Runner na najnowszy z ECR (deploy)
+          # Używamy aws-cli do pobrania ARN usługi i zaktualizowania jej konfiguracji
+          SERVICE_ARN=$(aws apprunner list-services --query "ServiceSummaryList[?ServiceName=='${{ env.BACKEND_SERVICE }}'].ServiceArn" --output text)
+          
+          if [ -z "$SERVICE_ARN" ]; then
+            echo "Error: App Runner service '${{ env.BACKEND_SERVICE }}' not found. Have you run terraform apply?"
+            exit 1
+          fi
+
+          aws apprunner update-service \
+            --service-arn $SERVICE_ARN \
+            --source-configuration '{
+              "ImageRepository": {
+                "ImageIdentifier": "'$ECR_REGISTRY'/${{ env.BACKEND_SERVICE }}:${{ github.sha }}",
+                "ImageRepositoryType": "ECR"
+              }
+            }' > /dev/null
+            
+          echo "Deployment initiated for Backend!"
+
+  deploy-frontend:
+    name: Deploy Frontend
+    needs: [changes, push]
+    if: needs.changes.outputs.frontend == 'true'
+    environment:
+      name: deploy-aws-frontend
+    runs-on: ubuntu-latest
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Deploy Frontend to App Runner
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          SERVICE_ARN=$(aws apprunner list-services --query "ServiceSummaryList[?ServiceName=='${{ env.FRONTEND_SERVICE }}'].ServiceArn" --output text)
+          
+          if [ -z "$SERVICE_ARN" ]; then
+            echo "Error: App Runner service '${{ env.FRONTEND_SERVICE }}' not found."
+            exit 1
+          fi
+
+          aws apprunner update-service \
+            --service-arn $SERVICE_ARN \
+            --source-configuration '{
+              "ImageRepository": {
+                "ImageIdentifier": "'$ECR_REGISTRY'/${{ env.FRONTEND_SERVICE }}:${{ github.sha }}",
+                "ImageRepositoryType": "ECR"
+              }
+            }' > /dev/null
+            
+          echo "Deployment initiated for Frontend!"
